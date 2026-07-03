@@ -12,8 +12,8 @@ Description: Implements randomization-based inferential procedures for the Local
     remain robust when compliance rates are low. Supports covariate adjustment
     via linear regression to improve precision.
 License: MIT + file LICENSE
-URL: https://github.com/hgchang1508/rilate
-BugReports: https://github.com/hgchang1508/rilate/issues
+URL: https://github.com/hchang1508/rilate
+BugReports: https://github.com/hchang1508/rilate/issues
 Imports:
     ivreg,
     lmtest,
