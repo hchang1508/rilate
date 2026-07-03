@@ -1,0 +1,22 @@
+Package: rilate
+Title: Randomization Inference for the Local Average Treatment Effect
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Haoge", "Chang", , "hgchang1508@gmail.com", role = c("aut", "cre")),
+    person("Arya", "Gadage", role = "aut"))
+Description: Implements randomization-based inferential procedures for the Local
+    Average Treatment Effect (LATE) in randomized experiments with
+    noncompliance. Provides Anderson-Rubin permutation tests, p-values, and
+    confidence sets that are finite-sample valid for the sharp null and
+    asymptotically valid for the LATE under treatment-effect heterogeneity, and
+    remain robust when compliance rates are low. Supports covariate adjustment
+    via linear regression to improve precision.
+License: MIT + file LICENSE
+Imports:
+    ivreg,
+    lmtest,
+    pbapply,
+    sandwich
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
