@@ -1,7 +1,7 @@
-hello_word <- function() {
+hello_world <- function() {
     print("Hello, world!")
 }
 
-hello_word2 <- function() {
+hello_world2 <- function() {
     print("Hello, world2!")
 }
