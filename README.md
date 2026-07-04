@@ -1,4 +1,4 @@
-RI for LATE
+RI for LATE (under construction)
 ================
 
 **Author:** Arya Gadage and Haoge Chang<br/> **Last updated:** July 04,
@@ -74,6 +74,18 @@ asymptotic g uarantees are stated in
 
 ## Demonstration
 
+# Install packages
+
+`rilate` is not yet on CRAN. Install the development version from
+[GitHub](https://github.com/hchang1508/rilate) with:
+
+``` r
+# install.packages("remote")
+remotes::install_github("hchang1508/rilate")
+```
+
+Then load it with `library(rilate)`, as in the example below.
+
 # Synthetic Data Example
 
 The workflow has three steps: simulate a randomized experiment with
@@ -120,16 +132,19 @@ head(dat)
 #> 6  1.8289233          1          1  0.7891082 -0.7986579
 ```
 
-**3. Run the randomization inference procedure.** Passing `x` runs
-*both* an unadjusted analysis and a covariate-adjusted one. Each returns
-a confidence set for the LATE and a randomization p-value for the sharp
-null ($Y_i(1)=Y_i(0)$ for all compliers) and weak null
-($\tau_{\text{LATE}} = 0$). (`run_AR()` also prints a human-readable
-report to the console; it is suppressed here.)
+**3. Run the randomization inference procedure.** `y`, `d`, and `z` name
+the outcome, treatment-received, and assignment columns (shown here at
+their defaults). Passing `x` runs *both* an unadjusted analysis and a
+covariate-adjusted one. Each returns a confidence set for the LATE and a
+randomization p-value for the sharp null ($Y_i(1)=Y_i(0)$ for all
+compliers) and weak null ($\tau_{\text{LATE}} = 0$). (`run_AR()` also
+prints a human-readable report to the console; it is suppressed here.)
 
 ``` r
 invisible(capture.output(
-  res <- run_AR(dat, x = c("x1", "x2"), algorithm = "algo2",
+  res <- run_AR(dat,
+                y = "Y_observed", d = "D_observed", z = "assignment",
+                x = c("x1", "x2"), algorithm = "algo2",
                 n_rand = 1000, seed = 1)
 ))
 ```
