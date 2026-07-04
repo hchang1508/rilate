@@ -31,7 +31,7 @@ make_ar_data2 <- function(N = 60, N1 = 30, seed = 1, tau_c = 1) {
 }
 
 prep_inputs2 <- function(df, seed = 123, n_rand = 150) {
-  quiet2(run_AR(df, seed = seed, n_rand = n_rand))
+  quiet2(run_rilate(df, seed = seed, n_rand = n_rand))
 }
 
 run_algo2 <- function(p) {

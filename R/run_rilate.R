@@ -1,5 +1,5 @@
 ################################################################################
-## run_AR.R
+## run_rilate.R
 ## User-facing wrapper around the Anderson-Rubin confidence-set algorithms
 ## (AR_algo1 / AR_algo2).
 ##
@@ -60,7 +60,7 @@
 #'   (a list of `[lower, upper]` intervals) and `p_value` (the randomization
 #'   p-value for the null `beta = 0`).
 #' @export
-run_AR <- function(data,
+run_rilate <- function(data,
                    y = "Y_observed",
                    d = "D_observed",
                    z = "assignment",
@@ -158,7 +158,7 @@ run_AR <- function(data,
     p_d_control = mean(std$D_observed[std$assignment == 0])
 
     cat("========================================\n")
-    cat("run_AR(): setup\n")
+    cat("run_rilate(): setup\n")
     cat("========================================\n")
     cat("  Algorithm            :", algorithm, "\n")
     cat("  Sample size N        :", N, "\n")
@@ -216,10 +216,10 @@ run_AR <- function(data,
 
     # --- Dispatch -------------------------------------------------------------
     # Dispatch by direct symbol reference so the algorithm function is resolved
-    # in run_AR()'s lexical scope (the package namespace). Do NOT use
+    # in run_rilate()'s lexical scope (the package namespace). Do NOT use
     # match.fun(<string>): it resolves in the CALLER's frame (parent.frame(2)),
     # where the non-exported AR_algo1/AR_algo2 are invisible, so an external
-    # `library(rilate); run_AR(...)` call would fail with "AR_algo2 not found".
+    # `library(rilate); run_rilate(...)` call would fail with "AR_algo2 not found".
     algo_fun = switch(algorithm,
                       algo1 = AR_algo1,
                       algo2 = AR_algo2)

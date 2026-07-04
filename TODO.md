@@ -7,6 +7,6 @@
 
 ## Outputs that `AR()` should return
 
-- [x] 2. p-value and confidence interval (CI) -- run_AR() now runs AR_algo1/
+- [x] 2. p-value and confidence interval (CI) -- run_rilate() now runs AR_algo1/
       AR_algo2 (execute = TRUE by default) and returns, per version, a
       confidence_set and randomization p-value (H0: beta = 0).

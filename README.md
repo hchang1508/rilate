@@ -11,7 +11,7 @@ for the Local Average Treatment Effect (LATE) developed in
 [\[2\]](https://academic.oup.com/biomet/article/113/2/asag010/8487895)
 and [\[4\]](https://academic.oup.com/jrsssa/article/168/1/109/7084141).
 
-## Overview
+# Overview
 
 In randomized experiments, participants do not always take the treatment
 they were assigned to — the treatment they actually receive can differ
@@ -38,9 +38,9 @@ $$
 \tau_{\text{LATE}} = \frac{1}{n_c} \sum_{i \in \mathcal{C}} \left( Y_i(1) - Y_i(0) \right)
 $$
 
-where $n_c = \lvert \mathcal{C} \rvert$ is the number of compliers. This
-package provides a randomization-based inferential procedure for
-$\tau_{\text{LATE}}$ with two complementary guarantees:
+where $n_c$ is the number of compliers. This package provides a
+randomization-based inferential procedure for $\tau_{\text{LATE}}$ with
+two complementary guarantees:
 
 - **Tests and p-values** are *finite-sample valid* for testing the sharp
   null $Y_i(1) = Y_i(0)$ for all $i \in \mathcal{C}$, and
@@ -55,7 +55,7 @@ $\tau_{\text{LATE}}$ with two complementary guarantees:
 The package supports covariate adjustment via linear regression, which
 can improve precision and guard against chance covariate imbalance.
 
-# (Important) Complete Randomization Design
+## Complete Randomization Design (Important)
 
 The package currently supports completely randomized designs with a
 binary treatment. The remaining statistical regularity conditions for
@@ -72,9 +72,9 @@ asymptotic g uarantees are stated in
     [\[2\]](https://academic.oup.com/biomet/article/113/2/asag010/8487895)
     into this repository and to help design the test cases.
 
-## Demonstration
+# Demonstration
 
-# Install packages
+## Install packages
 
 `rilate` is not yet on CRAN. Install the development version from
 [GitHub](https://github.com/hchang1508/rilate) with:
@@ -86,11 +86,11 @@ remotes::install_github("hchang1508/rilate")
 
 Then load it with `library(rilate)`, as in the example below.
 
-# Synthetic Data Example
+## Synthetic Data Example
 
 The workflow has three steps: simulate a randomized experiment with
 noncompliance, (optionally) attach baseline covariates, and call
-`run_AR()`.
+`run_rilate()`.
 
 **1. Simulate the experiment.** `gen_sim_data()` draws a completely
 randomized experiment from a population of always-takers, compliers, and
@@ -137,12 +137,13 @@ the outcome, treatment-received, and assignment columns (shown here at
 their defaults). Passing `x` runs *both* an unadjusted analysis and a
 covariate-adjusted one. Each returns a confidence set for the LATE and a
 randomization p-value for the sharp null ($Y_i(1)=Y_i(0)$ for all
-compliers) and weak null ($\tau_{\text{LATE}} = 0$). (`run_AR()` also
-prints a human-readable report to the console; it is suppressed here.)
+compliers) and weak null ($\tau_{\text{LATE}} = 0$). (`run_rilate()`
+also prints a human-readable report to the console; it is suppressed
+here.)
 
 ``` r
 invisible(capture.output(
-  res <- run_AR(dat,
+  res <- run_rilate(dat,
                 y = "Y_observed", d = "D_observed", z = "assignment",
                 x = c("x1", "x2"), algorithm = "algo2",
                 n_rand = 1000, seed = 1)

@@ -21,7 +21,7 @@
 #' p-value for the null `beta = 0` by scanning every interval of the permutation
 #' grid. This is the reference implementation; `AR_algo2()` returns the same
 #' result faster by jumping between crossings. Internal -- dispatched to by
-#' `run_AR()`, not called directly.
+#' `run_rilate()`, not called directly.
 #'
 #' @param data_table Data frame with columns `Y_observed`, `D_observed`,
 #'   `assignment`, and any (demeaned) covariates.

@@ -37,9 +37,9 @@ make_ar_data <- function(N = 60, N1 = 30, seed = 1, tau_c = 1) {
   as.data.frame(sim$observed)
 }
 
-# Prepare a reproducible (data_without, N1, N0, zsim) bundle via run_AR's gate.
+# Prepare a reproducible (data_without, N1, N0, zsim) bundle via run_rilate's gate.
 prep_inputs <- function(df, seed = 123, n_rand = 150) {
-  quiet(run_AR(df, seed = seed, n_rand = n_rand))
+  quiet(run_rilate(df, seed = seed, n_rand = n_rand))
 }
 
 # --- Return structure --------------------------------------------------------

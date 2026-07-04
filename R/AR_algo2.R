@@ -29,7 +29,7 @@
 #' `AR_algo1()`, but instead of checking every interval it jumps between
 #' crossing points (via `find_crossings_with_all()`), which is substantially
 #' faster. This is the default algorithm. Internal -- dispatched to by
-#' `run_AR()`, not called directly.
+#' `run_rilate()`, not called directly.
 #'
 #' @param data_table Data frame with columns `Y_observed`, `D_observed`,
 #'   `assignment`, and any (demeaned) covariates.
