@@ -76,17 +76,17 @@ asymptotic guarantees are stated in
 
 ## Install packages
 
-`rilate` is not yet on CRAN. Install the development version from
+Install the development version from
 [GitHub](https://github.com/hchang1508/rilate) with:
 
 ``` r
-# install.packages("remote")
+# install.packages("remotes")
 remotes::install_github("hchang1508/rilate")
 ```
 
 Then load it with `library(rilate)`, as in the example below.
 
-## run_rilate function
+## run_rilate() function
 
 The main entry point is `run_rilate()`. The `y`, `d`, and `z` arguments
 name the outcome, treatment-received, and assignment columns of `data`
@@ -96,7 +96,8 @@ Each returns a confidence set for the LATE and a randomization p-value
 for the sharp null and weak null hypotheses. `run_rilate()` also prints
 a human-readable setup report to the console. The number of simulated
 randomization draw samples is controlled by the `n_rand` argument and
-defaults to 1000.
+defaults to 1000. The confidence level is controlled by the `alpha`
+argument and defaults to 0.95.
 
 ``` r
 library(rilate)
@@ -121,7 +122,7 @@ dat <- as.data.frame(sim$observed)  # columns: Y_observed, D_observed, assignmen
 # run_rilate() prints a setup report and a per-step progress trace to the
 # console; pass verbose = FALSE to run silently and keep the returned object.
 res_nocov <- run_rilate(dat, y = "Y_observed", d = "D_observed",
-                        z = "assignment", n_rand = 1000, verbose = FALSE)
+                        z = "assignment", n_rand = 1000, alpha = 0.95, verbose = FALSE)
 
 res_nocov$results$without_covariates$confidence_set   # 95% confidence set for the LATE
 #> [[1]]
@@ -160,7 +161,7 @@ head(dat)
 
 # Passing `x` runs both an unadjusted and a covariate-adjusted analysis.
 res <- run_rilate(dat, y = "Y_observed", d = "D_observed", z = "assignment",
-                  x = c("x1", "x2"), n_rand = 1000, seed = 1, verbose = FALSE)
+                  x = c("x1", "x2"), n_rand = 1000, alpha = 0.95, verbose = FALSE)
 ```
 
 The result carries a `without_covariates` and a `with_covariates` entry,
@@ -181,16 +182,15 @@ data.frame(
   row.names = NULL
 )
 #>             analysis p_value          CS_95 width
-#> 1 without covariates   0.022 [0.198, 2.422] 2.224
-#> 2    with covariates   0.001 [1.070, 1.382] 0.312
+#> 1 without covariates   0.022 [0.159, 2.424] 2.265
+#> 2    with covariates   0.001 [1.059, 1.387] 0.328
 ```
 
 Adjusting for the two prognostic covariates shrinks the confidence set
-roughly sevenfold (from about `[0.20, 2.42]`, width `2.22`, to
-`[1.07, 1.38]`, width `0.31`) and sharpens the p-value for
-$\tau_{\text{LATE}} = 0$ from about `0.022` to `0.001`. This is the
-precision gain covariate adjustment buys when the covariates are
-predictive for the outcome.
+roughly sevenfold (from about `[0.16, 2.42]`, width `2.26`, to
+`[1.06, 1.39]`, width `0.33`) and sharpens the p-value from about
+`0.022` to `0.001`. This is the precision gain covariate adjustment buys
+when the covariates are predictive for the outcome.
 
 ## run_rilate() parameter references
 
@@ -227,6 +227,7 @@ as required unless your columns already use those default names.
 | `tol` | `1e-8` | Numerical tolerance passed to the algorithm. |
 | `cond_threshold` | `1e10` | Condition-number cutoff above which a treatment group’s covariate design `[1, X]` is treated as ill-conditioned (triggers an error). Only relevant when covariates are used. |
 | `seed` | `NULL` | Optional integer seed for reproducible generation of the permuted-assignment matrix (`zsim`). |
+| `verbose` | `TRUE` | When `TRUE`, print the setup report and per-step progress to the console; when `FALSE`, run silently. Does not affect the returned value. |
 
 # Assess Coverage
 
@@ -237,7 +238,7 @@ as required unless your columns already use those default names.
 ## gen_sim_data() references
 
 `gen_sim_data()` simulates a completely randomized experiment with
-one-sided noncompliance in a single call. It first builds a
+two-sided noncompliance in a single call. It first builds a
 potential-outcome (“true”) table for a population split into three
 principal strata — always-takers, compliers, and never-takers — and then
 draws one completely randomized assignment from it, revealing the
@@ -316,22 +317,12 @@ left untouched:
   unit’s stratum.
 - **`mode = "heterogeneous"`** — each unit draws
   $Y_i(1) = Y_i(0) + \tau_{s(i)}
-  \cdot \varepsilon_i$ with $\varepsilon_i \sim \mathcal{N}(1, 0.1)$,
-  and the stratum is then re-centered so that
-  $\operatorname{mean}(y1 - y0) = \tau_{s(i)}$ exactly within each
-  stratum.
-
-Two consequences worth noting:
-
-1.  The treatment effect enters **entirely through `y1`**. The baseline
-    `y0` is homogeneous noise that carries no information about
-    compliance type — it is identically distributed across all three
-    strata.
-2.  Because `y0` has no covariate structure of its own, the covariate
-    example above must *add* prognostic covariates on top of
-    `Y_observed` for covariate adjustment to have anything to explain.
-    If you need stratum-specific baselines, that would have to be added
-    to `gen_outcome_raw_normal()`; it is not modeled by default.
+  \cdot \varepsilon_i$ with $\varepsilon_i \sim \mathcal{N}(1, 0.1^2)$
+  (mean 1, standard deviation 0.1), and the stratum is then re-centered
+  so that $\operatorname{mean}(y1 - y0) = \tau_{s(i)}$ holds exactly
+  within the stratum. (Edge case: a complier stratum with $\tau_c = 0$
+  instead receives small mean-zero noise $\mathcal{N}(0, 0.1^2)$, again
+  re-centered to mean zero.)
 
 # References
 
