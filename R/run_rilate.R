@@ -52,11 +52,15 @@
 #' @param cond_threshold Condition-number cutoff above which a treatment group's
 #'   covariate design `[1, X]` is treated as ill-conditioned (default `1e10`).
 #' @param seed Optional integer seed for reproducible `zsim` generation.
+#' @param verbose If `TRUE` (default), print the setup report and the algorithm's
+#'   progress/results to the console; if `FALSE`, run silently (no output at
+#'   all). The returned value is identical either way.
 #' @return A list with the prepared inputs and metadata: `algorithm`, `alpha`,
 #'   `tol`, `N`, `N1`, `N0`, `runs` (which versions were prepared), `covariates`,
-#'   `zsim`, `inputs` (the `without` / `with` data tables), `guard` (per-group
-#'   rank and condition numbers), and `results`. Each element of `results`
-#'   (`without` / `with`) is the algorithm output -- a list with `confidence_set`
+#'   `zsim`, `inputs` (the `without_covariates` / `with_covariates` data tables),
+#'   `guard` (per-group rank and condition numbers), and `results`. Each element
+#'   of `results` (`without_covariates` / `with_covariates`) is the algorithm
+#'   output -- a list with `confidence_set`
 #'   (a list of `[lower, upper]` intervals) and `p_value` (the randomization
 #'   p-value for the null `beta = 0`).
 #' @export
@@ -71,7 +75,8 @@ run_rilate <- function(data,
                    alpha = 0.95,
                    tol = 1e-8,
                    cond_threshold = 1e10,
-                   seed = NULL) {
+                   seed = NULL,
+                   verbose = TRUE) {
 
     algorithm = match.arg(algorithm)
 
@@ -150,37 +155,39 @@ run_rilate <- function(data,
     has_cov = length(cov_names) > 0
     run_with = has_cov && isTRUE(with_covariate)
     # The without-covariates analysis is always prepared.
-    runs = if (run_with) c("without", "with") else "without"
+    runs = if (run_with) c("without_covariates", "with_covariates") else "without_covariates"
 
     # --- Report what the program understood ----------------------------------
     compliance_rate = mean(std$D_observed)
     p_d_treated = mean(std$D_observed[std$assignment == 1])
     p_d_control = mean(std$D_observed[std$assignment == 0])
 
-    cat("========================================\n")
-    cat("run_rilate(): setup\n")
-    cat("========================================\n")
-    cat("  Algorithm            :", algorithm, "\n")
-    cat("  Sample size N        :", N, "\n")
-    cat("  Treated   N1 (Z = 1) :", N1, "\n")
-    cat("  Control   N0 (Z = 0) :", N0, "\n")
-    cat("  Number of simulated assignment draws :", n_rand, "\n")
-    cat("  Compliance rate      :", round(compliance_rate, 4),
-        "(overall D = 1 rate)\n")
-    cat("     P(D = 1 | Z = 1)  :", round(p_d_treated, 4), "\n")
-    cat("     P(D = 1 | Z = 0)  :", round(p_d_control, 4), "\n")
-    cat("     first stage       :", round(p_d_treated - p_d_control, 4),
-        "(P(D=1|Z=1) - P(D=1|Z=0))\n")
-    if (run_with) {
-        cat("  Will return          : WITHOUT- and WITH-covariates results\n")
-    } else if (has_cov) {
-        cat("  Will return          : WITHOUT-covariates results only",
-            "(with_covariate = FALSE)\n")
-    } else {
-        cat("  Will return          : WITHOUT-covariates results only",
-            "(no covariates supplied)\n")
+    if (verbose) {
+        cat("========================================\n")
+        cat("run_rilate(): setup\n")
+        cat("========================================\n")
+        cat("  Algorithm            :", algorithm, "\n")
+        cat("  Sample size N        :", N, "\n")
+        cat("  Treated   N1 (Z = 1) :", N1, "\n")
+        cat("  Control   N0 (Z = 0) :", N0, "\n")
+        cat("  Number of simulated assignment draws :", n_rand, "\n")
+        cat("  Compliance rate      :", round(compliance_rate, 4),
+            "(overall D = 1 rate)\n")
+        cat("     P(D = 1 | Z = 1)  :", round(p_d_treated, 4), "\n")
+        cat("     P(D = 1 | Z = 0)  :", round(p_d_control, 4), "\n")
+        cat("     first stage       :", round(p_d_treated - p_d_control, 4),
+            "(P(D=1|Z=1) - P(D=1|Z=0))\n")
+        if (run_with) {
+            cat("  Will return          : WITHOUT- and WITH-covariates results\n")
+        } else if (has_cov) {
+            cat("  Will return          : WITHOUT-covariates results only",
+                "(with_covariate = FALSE)\n")
+        } else {
+            cat("  Will return          : WITHOUT-covariates results only",
+                "(no covariates supplied)\n")
+        }
+        cat("\n")
     }
-    cat("\n")
 
     # --- Demean covariates ----------------------------------------------------
     if (has_cov) {
@@ -193,8 +200,10 @@ run_rilate <- function(data,
         for (nm in cov_names) {
             std[[nm]] = std[[nm]] - mean(std[[nm]])
         }
-        cat("Demeaned", length(cov_names), "covariate(s): ",
-            paste(cov_names, collapse = ", "), "\n\n", sep = "")
+        if (verbose) {
+            cat("Demeaned", length(cov_names), "covariate(s): ",
+                paste(cov_names, collapse = ", "), "\n\n", sep = "")
+        }
     }
 
     # --- Invertibility guard (only matters for the with-covariates design) ---
@@ -224,12 +233,25 @@ run_rilate <- function(data,
                       algo1 = AR_algo1,
                       algo2 = AR_algo2)
 
-    results = list(without = NULL, with = NULL)
+    results = list(without_covariates = NULL, with_covariates = NULL)
+
+    # When not verbose, silence the algorithms' console output AND pbapply's
+    # progress bars (which go to the message stream, not stdout).
+    if (!verbose) {
+        old_pbo = pbapply::pboptions(type = "none")
+        on.exit(pbapply::pboptions(old_pbo), add = TRUE)
+    }
 
     for (r in runs) {
-        dt = if (r == "with") data_with else data_without
-        results[[r]] = algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
-                                tol = tol, alpha = alpha)
+        dt = if (r == "with_covariates") data_with else data_without
+        if (verbose) {
+            results[[r]] = algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
+                                    tol = tol, alpha = alpha)
+        } else {
+            utils::capture.output(
+                results[[r]] <- algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
+                                         tol = tol, alpha = alpha))
+        }
     }
 
     return(list(
@@ -242,7 +264,7 @@ run_rilate <- function(data,
         runs       = runs,
         covariates = cov_names,
         zsim       = zsim,
-        inputs     = list(without = data_without, with = data_with),
+        inputs     = list(without_covariates = data_without, with_covariates = data_with),
         guard      = guard,
         results    = results[runs]
     ))

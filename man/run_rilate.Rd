@@ -16,7 +16,8 @@ run_rilate(
   alpha = 0.95,
   tol = 1e-08,
   cond_threshold = 1e+10,
-  seed = NULL
+  seed = NULL,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -50,13 +51,18 @@ without-covariates analysis.}
 covariate design \verb{[1, X]} is treated as ill-conditioned (default \code{1e10}).}
 
 \item{seed}{Optional integer seed for reproducible \code{zsim} generation.}
+
+\item{verbose}{If \code{TRUE} (default), print the setup report and the algorithm's
+progress/results to the console; if \code{FALSE}, run silently (no output at
+all). The returned value is identical either way.}
 }
 \value{
 A list with the prepared inputs and metadata: \code{algorithm}, \code{alpha},
 \code{tol}, \code{N}, \code{N1}, \code{N0}, \code{runs} (which versions were prepared), \code{covariates},
-\code{zsim}, \code{inputs} (the \code{without} / \code{with} data tables), \code{guard} (per-group
-rank and condition numbers), and \code{results}. Each element of \code{results}
-(\code{without} / \code{with}) is the algorithm output -- a list with \code{confidence_set}
+\code{zsim}, \code{inputs} (the \code{without_covariates} / \code{with_covariates} data tables),
+\code{guard} (per-group rank and condition numbers), and \code{results}. Each element
+of \code{results} (\code{without_covariates} / \code{with_covariates}) is the algorithm
+output -- a list with \code{confidence_set}
 (a list of \verb{[lower, upper]} intervals) and \code{p_value} (the randomization
 p-value for the null \code{beta = 0}).
 }

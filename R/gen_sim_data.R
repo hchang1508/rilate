@@ -319,7 +319,7 @@ gen_data_additive=function(N_at,N_nt,N_c,tau){
 #' @param N0 Number of units assigned to control (`Z = 0`).
 #' @return A numeric matrix with columns `Y_observed`, `D_observed`, and
 #'   `assignment`, one row per unit.
-#' @noRd
+#' @export
 gen_data_onesim = function(outcome_table,N1,N0){
 
 

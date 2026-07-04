@@ -35,7 +35,7 @@ prep_inputs2 <- function(df, seed = 123, n_rand = 150) {
 }
 
 run_algo2 <- function(p) {
-  quiet2(AR_algo2(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  quiet2(AR_algo2(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                   zsim = p$zsim, tol = 1e-8, alpha = 0.95))
 }
 
@@ -60,7 +60,7 @@ test_that("p_value matches an independent (1 + count)/(1 + n) recomputation", {
   p <- prep_inputs2(make_ar_data2())
   res <- run_algo2(p)
 
-  dt <- p$inputs$without
+  dt <- p$inputs$without_covariates
   obs <- solve_coef_01(dt, p$N1, p$N0)
   sim <- sapply(seq_len(ncol(p$zsim)), function(i) {
     d <- dt
@@ -104,7 +104,7 @@ test_that("same inputs -> identical p_value and confidence_set", {
 
 test_that("AR_algo2 agrees with AR_algo1 on the same inputs", {
   p <- prep_inputs2(make_ar_data2(tau_c = 2))
-  r1 <- quiet2(AR_algo1(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  r1 <- quiet2(AR_algo1(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                         zsim = p$zsim, tol = 1e-8, alpha = 0.95))
   r2 <- run_algo2(p)
   # identical p-value (same helper, same inputs) ...

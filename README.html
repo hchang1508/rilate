@@ -674,16 +674,15 @@ compliers. This package provides a randomization-based inferential
 procedure for <span class="math inline">\(\tau_{\text{LATE}}\)</span>
 with two complementary guarantees:</p>
 <ul>
-<li><strong>Tests and p-values</strong> are <em>finite-sample valid</em>
-for testing the sharp null <span class="math inline">\(Y_i(1) =
+<li><strong>Tests and p-values</strong> are finite-sample valid for
+testing the sharp null <span class="math inline">\(Y_i(1) =
 Y_i(0)\)</span> for all <span class="math inline">\(i \in
-\mathcal{C}\)</span>, and <em>asymptotically valid</em> for testing
-<span class="math inline">\(\tau_{\text{LATE}} =0\)</span> (under
+\mathcal{C}\)</span>, and asymptotically valid for testing <span class="math inline">\(\tau_{\text{LATE}} =0\)</span> (under
 treatment-effect heterogeneity).</li>
-<li><strong>Confidence sets</strong> are <em>finite-sample exact</em>
-under treatment-effect additive homogeneity (<span class="math inline">\(Y_i(1) = Y_i(0) + \tau\)</span> for all <span class="math inline">\(i \in \mathcal{C}\)</span>, with <span class="math inline">\(\tau\)</span> not depending on <span class="math inline">\(i\)</span>), and <em>asymptotically valid</em> for
-the LATE under heterogeneity. The procedures are robust against low
-compliance rates.</li>
+<li><strong>Confidence sets</strong> are finite-sample valid under
+treatment-effect additive homogeneity (<span class="math inline">\(Y_i(1) = Y_i(0) + \tau\)</span> for all <span class="math inline">\(i \in \mathcal{C}\)</span>, with <span class="math inline">\(\tau\)</span> not depending on <span class="math inline">\(i\)</span>), and asymptotically valid for the LATE
+under heterogeneity. The procedures are robust against low compliance
+rates.</li>
 </ul>
 <p>The package supports covariate adjustment via linear regression,
 which can improve precision and guard against chance covariate
@@ -692,7 +691,7 @@ imbalance.</p>
 Design (Important)</h2>
 <p>The package currently supports completely randomized designs with a
 binary treatment. The remaining statistical regularity conditions for
-asymptotic g uarantees are stated in <a href="https://academic.oup.com/biomet/article/113/2/asag010/8487895">[2]</a>.</p>
+asymptotic guarantees are stated in <a href="https://academic.oup.com/biomet/article/113/2/asag010/8487895">[2]</a>.</p>
 <h1 id="note">Note</h1>
 <ol style="list-style-type: decimal">
 <li>The package includes two algorithms that implement the same
@@ -711,88 +710,356 @@ with:</p>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a>remotes<span class="sc">::</span><span class="fu">install_github</span>(<span class="st">&quot;hchang1508/rilate&quot;</span>)</span></code></pre></div>
 <p>Then load it with <code>library(rilate)</code>, as in the example
 below.</p>
-<h2 id="synthetic-data-example">Synthetic Data Example</h2>
-<p>The workflow has three steps: simulate a randomized experiment with
-noncompliance, (optionally) attach baseline covariates, and call
-<code>run_rilate()</code>.</p>
-<p><strong>1. Simulate the experiment.</strong>
-<code>gen_sim_data()</code> draws a completely randomized experiment
-from a population of always-takers, compliers, and never-takers. Here
-the true complier effect (the LATE) is <code>1</code>.</p>
+<h2 id="run_rilate-function">run_rilate function</h2>
+<p>The main entry point is <code>run_rilate()</code>. The
+<code>y</code>, <code>d</code>, and <code>z</code> arguments name the
+outcome, treatment-received, and assignment columns of <code>data</code>
+(and default to <code>&quot;Y_observed&quot;</code>, <code>&quot;D_observed&quot;</code>,
+<code>&quot;assignment&quot;</code>). Passing <code>x</code> runs <em>both</em> an
+unadjusted analysis and a covariate-adjusted one. Each returns a
+confidence set for the LATE and a randomization p-value for the sharp
+null and weak null hypotheses. <code>run_rilate()</code> also prints a
+human-readable setup report to the console. The number of simulated
+randomization draw samples is controlled by the <code>n_rand</code>
+argument and defaults to 1000.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">library</span>(rilate)</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">7</span>)</span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>sim <span class="ot">&lt;-</span> <span class="fu">gen_sim_data</span>(</span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>  <span class="at">N         =</span> <span class="dv">800</span>,</span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>  <span class="at">N1        =</span> <span class="dv">400</span>,                  <span class="co"># 400 assigned to treatment, 400 to control</span></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="at">fractions =</span> <span class="fu">c</span>(<span class="fl">0.20</span>, <span class="fl">0.50</span>, <span class="fl">0.30</span>),  <span class="co"># always-takers, compliers, never-takers</span></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="at">taus      =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>),           <span class="co"># principal-stratum effects; complier LATE = 1</span></span>
-<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="at">mode      =</span> <span class="st">&quot;constant&quot;</span></span>
-<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>)</span>
-<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(sim<span class="sc">$</span>observed)  <span class="co"># columns: Y_observed, D_observed, assignment</span></span></code></pre></div>
-<p><strong>2. Attach prognostic covariates.</strong>
-<code>gen_sim_data()</code> returns only the outcome, treatment, and
-assignment, so we append two baseline covariates by hand. They are drawn
-independently of assignment (randomization keeps them balanced across
-arms) but drive part of the outcome, so adjusting for them removes noise
-and sharpens inference.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">nrow</span>(dat)</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>dat<span class="sc">$</span>x1 <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(n)</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>dat<span class="sc">$</span>x2 <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(n)</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>dat<span class="sc">$</span>Y_observed <span class="ot">&lt;-</span> dat<span class="sc">$</span>Y_observed <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> dat<span class="sc">$</span>x1 <span class="sc">-</span> <span class="fl">1.5</span> <span class="sc">*</span> dat<span class="sc">$</span>x2</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a><span class="fu">head</span>(dat)</span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="co">#&gt;   Y_observed D_observed assignment         x1         x2</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co">#&gt; 1  3.0577435          1          1 -0.2852178 -0.8939547</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co">#&gt; 2  0.7056030          1          0 -0.1503482 -1.4687140</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co">#&gt; 3  1.5291546          1          0  0.7906237 -0.4281331</span></span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt; 4  1.5293415          1          0  1.1918356  0.2946912</span></span>
-<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt; 5 -0.7523978          1          1 -0.3399238 -0.5987488</span></span>
-<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; 6  1.8289233          1          1  0.7891082 -0.7986579</span></span></code></pre></div>
-<p><strong>3. Run the randomization inference procedure.</strong>
-<code>y</code>, <code>d</code>, and <code>z</code> name the outcome,
-treatment-received, and assignment columns (shown here at their
-defaults). Passing <code>x</code> runs <em>both</em> an unadjusted
-analysis and a covariate-adjusted one. Each returns a confidence set for
-the LATE and a randomization p-value for the sharp null (<span class="math inline">\(Y_i(1)=Y_i(0)\)</span> for all compliers) and weak
-null (<span class="math inline">\(\tau_{\text{LATE}} = 0\)</span>).
-(<code>run_rilate()</code> also prints a human-readable report to the
-console; it is suppressed here.)</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">invisible</span>(<span class="fu">capture.output</span>(</span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  res <span class="ot">&lt;-</span> <span class="fu">run_rilate</span>(dat,</span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>                <span class="at">y =</span> <span class="st">&quot;Y_observed&quot;</span>, <span class="at">d =</span> <span class="st">&quot;D_observed&quot;</span>, <span class="at">z =</span> <span class="st">&quot;assignment&quot;</span>,</span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>                <span class="at">x =</span> <span class="fu">c</span>(<span class="st">&quot;x1&quot;</span>, <span class="st">&quot;x2&quot;</span>), <span class="at">algorithm =</span> <span class="st">&quot;algo2&quot;</span>,</span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>                <span class="at">n_rand =</span> <span class="dv">1000</span>, <span class="at">seed =</span> <span class="dv">1</span>)</span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>))</span></code></pre></div>
-<p>The result carries a <code>without</code>- and a
-<code>with</code>-covariates entry, each with a
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="do">#####################################################################################</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a><span class="do">########generate random data ########################################################</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="do">#####################################################################################</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">7</span>)</span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>sim <span class="ot">&lt;-</span> <span class="fu">gen_sim_data</span>(</span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>  <span class="at">N         =</span> <span class="dv">800</span>,</span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="at">N1        =</span> <span class="dv">400</span>,                  <span class="co"># 400 assigned to treatment, 400 to control</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="at">fractions =</span> <span class="fu">c</span>(<span class="fl">0.20</span>, <span class="fl">0.50</span>, <span class="fl">0.30</span>),  <span class="co"># always-takers, compliers, never-takers</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>  <span class="at">taus      =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>),           <span class="co"># principal-stratum effects; complier LATE = 1</span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>  <span class="at">mode      =</span> <span class="st">&quot;constant&quot;</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>)</span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(sim<span class="sc">$</span>observed)  <span class="co"># columns: Y_observed, D_observed, assignment</span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a><span class="do">#####################################################################################</span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a><span class="do">########run run_rilate ##############################################################</span></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a><span class="do">#####################################################################################</span></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a><span class="co"># run_rilate() prints a setup report and a per-step progress trace to the</span></span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a><span class="co"># console; pass verbose = FALSE to run silently and keep the returned object.</span></span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>res_nocov <span class="ot">&lt;-</span> <span class="fu">run_rilate</span>(dat, <span class="at">y =</span> <span class="st">&quot;Y_observed&quot;</span>, <span class="at">d =</span> <span class="st">&quot;D_observed&quot;</span>,</span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>                        <span class="at">z =</span> <span class="st">&quot;assignment&quot;</span>, <span class="at">n_rand =</span> <span class="dv">1000</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a>res_nocov<span class="sc">$</span>results<span class="sc">$</span>without_covariates<span class="sc">$</span>confidence_set   <span class="co"># 95% confidence set for the LATE</span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a><span class="co">#&gt; [[1]]</span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="co">#&gt; [1] 0.8491505 1.5757713</span></span>
+<span id="cb2-28"><a href="#cb2-28" tabindex="-1"></a>res_nocov<span class="sc">$</span>results<span class="sc">$</span>without_covariates<span class="sc">$</span>p_value          <span class="co"># randomization p-value (H0: LATE = 0)</span></span>
+<span id="cb2-29"><a href="#cb2-29" tabindex="-1"></a><span class="co">#&gt; [1] 0.000999001</span></span></code></pre></div>
+<p><code>run_rilate()</code> returns a list with the prepared inputs and
+metadata (<code>algorithm</code>, <code>alpha</code>, <code>tol</code>,
+<code>N</code>, <code>N1</code>, <code>N0</code>, <code>runs</code>,
+<code>covariates</code>, <code>zsim</code>, <code>inputs</code>,
+<code>guard</code>) plus <code>results</code>. Each element of
+<code>results</code> (<code>without_covariates</code> and, when
+applicable, <code>with_covariates</code>) holds a
+<code>confidence_set</code> (a list of <code>[lower, upper]</code>
+intervals) and a <code>p_value</code> (the randomization p-value for the
+null <span class="math inline">\(\tau_{\text{LATE}} = 0\)</span>).</p>
+<h2 id="run_rilate-with-covariates">run_rilate() with covariates</h2>
+<p>We can use pretreatment covariates to improve the precision of our
+analysis.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">7</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="fu">nrow</span>(dat)</span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>dat<span class="sc">$</span>x1 <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(n)</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>dat<span class="sc">$</span>x2 <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(n)</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>dat<span class="sc">$</span>Y_observed <span class="ot">&lt;-</span> dat<span class="sc">$</span>Y_observed <span class="sc">+</span> <span class="dv">2</span> <span class="sc">*</span> dat<span class="sc">$</span>x1 <span class="sc">-</span> <span class="fl">1.5</span> <span class="sc">*</span> dat<span class="sc">$</span>x2</span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a><span class="fu">head</span>(dat)</span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="co">#&gt;     Y_observed D_observed assignment         x1         x2</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="co">#&gt; 1  6.668696762          1          1  2.2872472  0.1286965</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a><span class="co">#&gt; 2 -2.765516317          1          0 -1.1967717 -0.5498658</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="co">#&gt; 3 -0.003811554          1          0 -0.6942925 -1.3860440</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a><span class="co">#&gt; 4 -1.024435857          1          0 -0.4122930 -0.1416287</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="co">#&gt; 5 -1.468333867          1          1 -0.9706733 -0.9624574</span></span>
+<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a><span class="co">#&gt; 6 -4.048748998          1          1 -0.9472799  0.8046061</span></span>
+<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a></span>
+<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a><span class="co"># Passing `x` runs both an unadjusted and a covariate-adjusted analysis.</span></span>
+<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>res <span class="ot">&lt;-</span> <span class="fu">run_rilate</span>(dat, <span class="at">y =</span> <span class="st">&quot;Y_observed&quot;</span>, <span class="at">d =</span> <span class="st">&quot;D_observed&quot;</span>, <span class="at">z =</span> <span class="st">&quot;assignment&quot;</span>,</span>
+<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>                  <span class="at">x =</span> <span class="fu">c</span>(<span class="st">&quot;x1&quot;</span>, <span class="st">&quot;x2&quot;</span>), <span class="at">n_rand =</span> <span class="dv">1000</span>, <span class="at">seed =</span> <span class="dv">1</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span></code></pre></div>
+<p>The result carries a <code>without_covariates</code> and a
+<code>with_covariates</code> entry, each with a
 <code>confidence_set</code> and a <code>p_value</code>:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>fmt_cs   <span class="ot">&lt;-</span> <span class="cf">function</span>(cs) <span class="fu">paste</span>(<span class="fu">vapply</span>(cs, <span class="cf">function</span>(iv)</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="fu">sprintf</span>(<span class="st">&quot;[%.3f, %.3f]&quot;</span>, iv[<span class="dv">1</span>], iv[<span class="dv">2</span>]), <span class="fu">character</span>(<span class="dv">1</span>)), <span class="at">collapse =</span> <span class="st">&quot; U &quot;</span>)</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>cs_width <span class="ot">&lt;-</span> <span class="cf">function</span>(cs) <span class="fu">sum</span>(<span class="fu">vapply</span>(cs, <span class="cf">function</span>(iv) <span class="fu">diff</span>(iv), <span class="fu">numeric</span>(<span class="dv">1</span>)))</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a></span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="at">analysis =</span> <span class="fu">c</span>(<span class="st">&quot;without covariates&quot;</span>, <span class="st">&quot;with covariates&quot;</span>),</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  <span class="at">p_value  =</span> <span class="fu">round</span>(<span class="fu">c</span>(res<span class="sc">$</span>results<span class="sc">$</span>without<span class="sc">$</span>p_value, res<span class="sc">$</span>results<span class="sc">$</span>with<span class="sc">$</span>p_value), <span class="dv">4</span>),</span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>  <span class="at">CS_95    =</span> <span class="fu">c</span>(<span class="fu">fmt_cs</span>(res<span class="sc">$</span>results<span class="sc">$</span>without<span class="sc">$</span>confidence_set),</span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>               <span class="fu">fmt_cs</span>(res<span class="sc">$</span>results<span class="sc">$</span>with<span class="sc">$</span>confidence_set)),</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="at">width    =</span> <span class="fu">round</span>(<span class="fu">c</span>(<span class="fu">cs_width</span>(res<span class="sc">$</span>results<span class="sc">$</span>without<span class="sc">$</span>confidence_set),</span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>                     <span class="fu">cs_width</span>(res<span class="sc">$</span>results<span class="sc">$</span>with<span class="sc">$</span>confidence_set)), <span class="dv">3</span>),</span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  <span class="at">row.names =</span> <span class="cn">NULL</span></span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>)</span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co">#&gt;             analysis p_value           CS_95 width</span></span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co">#&gt; 1 without covariates  0.2697 [-0.468, 1.494] 1.962</span></span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="co">#&gt; 2    with covariates  0.0010  [0.832, 1.540] 0.708</span></span></code></pre></div>
-<p>Both 95% confidence sets cover the true LATE of <code>1</code>.
-Adjusting for the two prognostic covariates shrinks the confidence set
-roughly threefold (from about <code>[-0.47, 1.49]</code> to
-<code>[0.83, 1.54]</code>) and sharpens the p-value for <span class="math inline">\(\tau_{\text{LATE}} = 0\)</span> from about
-<code>0.27</code> — no detectable effect — to about <code>0.001</code>.
-This is the precision gain covariate adjustment buys when the covariates
-are prognostic for the outcome.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>fmt_cs   <span class="ot">&lt;-</span> <span class="cf">function</span>(cs) <span class="fu">paste</span>(<span class="fu">vapply</span>(cs, <span class="cf">function</span>(iv)</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="fu">sprintf</span>(<span class="st">&quot;[%.3f, %.3f]&quot;</span>, iv[<span class="dv">1</span>], iv[<span class="dv">2</span>]), <span class="fu">character</span>(<span class="dv">1</span>)), <span class="at">collapse =</span> <span class="st">&quot; U &quot;</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>cs_width <span class="ot">&lt;-</span> <span class="cf">function</span>(cs) <span class="fu">sum</span>(<span class="fu">vapply</span>(cs, <span class="cf">function</span>(iv) <span class="fu">diff</span>(iv), <span class="fu">numeric</span>(<span class="dv">1</span>)))</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>  <span class="at">analysis =</span> <span class="fu">c</span>(<span class="st">&quot;without covariates&quot;</span>, <span class="st">&quot;with covariates&quot;</span>),</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>  <span class="at">p_value  =</span> <span class="fu">round</span>(<span class="fu">c</span>(res<span class="sc">$</span>results<span class="sc">$</span>without_covariates<span class="sc">$</span>p_value, res<span class="sc">$</span>results<span class="sc">$</span>with_covariates<span class="sc">$</span>p_value), <span class="dv">4</span>),</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>  <span class="at">CS_95    =</span> <span class="fu">c</span>(<span class="fu">fmt_cs</span>(res<span class="sc">$</span>results<span class="sc">$</span>without_covariates<span class="sc">$</span>confidence_set),</span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>               <span class="fu">fmt_cs</span>(res<span class="sc">$</span>results<span class="sc">$</span>with_covariates<span class="sc">$</span>confidence_set)),</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="at">width    =</span> <span class="fu">round</span>(<span class="fu">c</span>(<span class="fu">cs_width</span>(res<span class="sc">$</span>results<span class="sc">$</span>without_covariates<span class="sc">$</span>confidence_set),</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>                     <span class="fu">cs_width</span>(res<span class="sc">$</span>results<span class="sc">$</span>with_covariates<span class="sc">$</span>confidence_set)), <span class="dv">3</span>),</span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>  <span class="at">row.names =</span> <span class="cn">NULL</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>)</span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="co">#&gt;             analysis p_value          CS_95 width</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="co">#&gt; 1 without covariates   0.022 [0.198, 2.422] 2.224</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a><span class="co">#&gt; 2    with covariates   0.001 [1.070, 1.382] 0.312</span></span></code></pre></div>
+<p>Adjusting for the two prognostic covariates shrinks the confidence
+set roughly sevenfold (from about <code>[0.20, 2.42]</code>, width
+<code>2.22</code>, to <code>[1.07, 1.38]</code>, width
+<code>0.31</code>) and sharpens the p-value for <span class="math inline">\(\tau_{\text{LATE}} = 0\)</span> from about
+<code>0.022</code> to <code>0.001</code>. This is the precision gain
+covariate adjustment buys when the covariates are predictive for the
+outcome.</p>
+<h2 id="run_rilate-parameter-references">run_rilate() parameter
+references</h2>
+<p>Below are its inputs, split into those you must supply and those that
+have sensible defaults.</p>
+<h3 id="required-inputs">Required inputs</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Argument</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>data</code></td>
+<td>data frame</td>
+<td>Contains the outcome, treatment-received, assignment, and
+(optionally) covariate columns.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>y</code>, <code>d</code>, and <code>z</code> arguments
+below name columns of <code>data</code>. They are technically optional
+because they default to <code>&quot;Y_observed&quot;</code>,
+<code>&quot;D_observed&quot;</code>, and <code>&quot;assignment&quot;</code>, but the
+analysis is undefined without valid outcome, treatment, and assignment
+columns — so treat them as required unless your columns already use
+those default names.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Argument</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>y</code></td>
+<td><code>&quot;Y_observed&quot;</code></td>
+<td>Name of the outcome column in <code>data</code>.</td>
+</tr>
+<tr class="even">
+<td><code>d</code></td>
+<td><code>&quot;D_observed&quot;</code></td>
+<td>Name of the treatment-<em>received</em> column in <code>data</code>.
+Must be binary (0/1).</td>
+</tr>
+<tr class="odd">
+<td><code>z</code></td>
+<td><code>&quot;assignment&quot;</code></td>
+<td>Name of the treatment-<em>assignment</em> column in
+<code>data</code>. Must be binary (0/1).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="optional-inputs">Optional inputs</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Argument</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>x</code></td>
+<td><code>NULL</code></td>
+<td>Character vector naming covariate columns to adjust for. When
+<code>NULL</code>, no covariates are used and the covariate-adjusted
+analysis is skipped. Named columns must exist in <code>data</code>, must
+be numeric, and must not overlap
+<code>y</code>/<code>d</code>/<code>z</code>.</td>
+</tr>
+<tr class="even">
+<td><code>algorithm</code></td>
+<td><code>&quot;algo2&quot;</code></td>
+<td>Which algorithm to run: <code>&quot;algo2&quot;</code> (faster, default) or
+<code>&quot;algo1&quot;</code> (retained for validation). Both implement the same
+procedure.</td>
+</tr>
+<tr class="odd">
+<td><code>n_rand</code></td>
+<td><code>1000</code></td>
+<td>Number of randomizations (permuted assignments) to draw. Larger
+values give more precise p-values at higher computational cost.</td>
+</tr>
+<tr class="even">
+<td><code>with_covariate</code></td>
+<td><code>TRUE</code></td>
+<td>When <code>TRUE</code> and covariates are supplied, prepare
+<em>both</em> an unadjusted and a covariate-adjusted analysis. When
+<code>FALSE</code>, prepare only the unadjusted analysis.</td>
+</tr>
+<tr class="odd">
+<td><code>alpha</code></td>
+<td><code>0.95</code></td>
+<td>Confidence level for the returned confidence set.</td>
+</tr>
+<tr class="even">
+<td><code>tol</code></td>
+<td><code>1e-8</code></td>
+<td>Numerical tolerance passed to the algorithm.</td>
+</tr>
+<tr class="odd">
+<td><code>cond_threshold</code></td>
+<td><code>1e10</code></td>
+<td>Condition-number cutoff above which a treatment group’s covariate
+design <code>[1, X]</code> is treated as ill-conditioned (triggers an
+error). Only relevant when covariates are used.</td>
+</tr>
+<tr class="even">
+<td><code>seed</code></td>
+<td><code>NULL</code></td>
+<td>Optional integer seed for reproducible generation of the
+permuted-assignment matrix (<code>zsim</code>).</td>
+</tr>
+</tbody>
+</table>
 <h1 id="assess-coverage">Assess Coverage</h1>
 <h1 id="compare-two-algorithms-time-">Compare Two algorithms (time
 )</h1>
+<h1 id="miscellaneous">Miscellaneous</h1>
+<h2 id="gen_sim_data-references">gen_sim_data() references</h2>
+<p><code>gen_sim_data()</code> simulates a completely randomized
+experiment with one-sided noncompliance in a single call. It first
+builds a potential-outcome (“true”) table for a population split into
+three principal strata — always-takers, compliers, and never-takers —
+and then draws one completely randomized assignment from it, revealing
+the observed treatment received <code>D = d1 * Z + d0 * (1 - Z)</code>
+and outcome <code>Y = y1 * D + y0 * (1 - D)</code>. It is the data
+generator used throughout these examples and in the package’s simulation
+tests.</p>
+<p>The stratum counts are derived from <code>fractions</code>:
+<code>N_at = round(fa * N)</code>, <code>N_c = round(fc * N)</code>, and
+the never-taker count <code>N_nt = N - N_at - N_c</code> absorbs any
+rounding remainder so the three counts always sum to <code>N</code>
+exactly. By default (<code>mode = &quot;constant&quot;</code>) every unit in a
+stratum receives exactly that stratum’s treatment effect;
+<code>mode = &quot;heterogeneous&quot;</code> instead draws unit-level effects
+<code>tau * rnorm(n, 1, 0.1)</code> and re-centers each stratum’s mean
+back to its target <code>tau</code>.</p>
+<h3 id="inputs">Inputs</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Argument</th>
+<th>Type / Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>N</code></td>
+<td>integer</td>
+<td>Total number of units.</td>
+</tr>
+<tr class="even">
+<td><code>N1</code></td>
+<td>integer</td>
+<td>Number of units assigned to treatment (<code>Z = 1</code>); the
+remaining <code>N - N1</code> units are controls. Must satisfy
+<code>0 &lt;= N1 &lt;= N</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>fractions</code></td>
+<td><code>c(fa, fc, fn)</code></td>
+<td>Population fractions for always-takers, compliers, and never-takers.
+Must sum to 1 (up to floating-point error).</td>
+</tr>
+<tr class="even">
+<td><code>taus</code></td>
+<td><code>c(tau_a, tau_c, tau_n)</code></td>
+<td>Principal-stratum treatment effects for always-takers, compliers,
+and never-takers. <code>tau_c</code> is the complier LATE.</td>
+</tr>
+<tr class="odd">
+<td><code>mode</code></td>
+<td><code>&quot;constant&quot;</code></td>
+<td><code>&quot;constant&quot;</code> gives every unit in a stratum exactly its
+<code>tau</code>; <code>&quot;heterogeneous&quot;</code> draws unit-level effects
+around each stratum’s target and calibrates the stratum mean to
+<code>tau</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="value">Value</h3>
+<p>A list with two elements:</p>
+<ul>
+<li><code>true_table</code> — the full potential-outcome table (columns
+<code>indices</code>, <code>y1</code>, <code>y0</code>, <code>d1</code>,
+<code>d0</code>), with rows ordered always-takers, never-takers, then
+compliers.</li>
+<li><code>observed</code> — one realized sample (columns
+<code>Y_observed</code>, <code>D_observed</code>,
+<code>assignment</code>), one row per unit. This is the data frame you
+pass to <code>run_rilate()</code>.</li>
+</ul>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">7</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>sim <span class="ot">&lt;-</span> <span class="fu">gen_sim_data</span>(</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="at">N         =</span> <span class="dv">800</span>,</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="at">N1        =</span> <span class="dv">400</span>,                  <span class="co"># 400 assigned to treatment, 400 to control</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>  <span class="at">fractions =</span> <span class="fu">c</span>(<span class="fl">0.20</span>, <span class="fl">0.50</span>, <span class="fl">0.30</span>),  <span class="co"># always-takers, compliers, never-takers</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>  <span class="at">taus      =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>),           <span class="co"># complier LATE = 1; no effect for others</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>  <span class="at">mode      =</span> <span class="st">&quot;constant&quot;</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>)</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a><span class="fu">head</span>(<span class="fu">as.data.frame</span>(sim<span class="sc">$</span>observed))</span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a><span class="co">#&gt;   Y_observed D_observed assignment</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="co">#&gt; 1  2.2872472          1          1</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a><span class="co">#&gt; 2 -1.1967717          1          0</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a><span class="co">#&gt; 3 -0.6942925          1          0</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a><span class="co">#&gt; 4 -0.4122930          1          0</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a><span class="co">#&gt; 5 -0.9706733          1          1</span></span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a><span class="co">#&gt; 6 -0.9472799          1          1</span></span></code></pre></div>
+<h3 id="how-the-baseline-outcome-y0-is-generated">How the baseline
+outcome <code>y0</code> is generated</h3>
+<p>The baseline (control) potential outcome <span class="math inline">\(Y_i(0)\)</span> is drawn once, up front, and is
+never modified afterward. Each unit gets an i.i.d. standard-normal
+draw,</p>
+<p><span class="math display">\[
+Y_i(0) \sim \mathcal{N}(0, 1),
+\]</span></p>
+<p>independently of the unit’s compliance type (always-taker, complier,
+or never-taker). At this “raw” stage the treated outcome is initialized
+to the same value, <span class="math inline">\(Y_i(1) = Y_i(0)\)</span>,
+so there is no treatment effect yet.</p>
+<p>The treatment effect is then added <strong>only to the
+<code>y1</code> column</strong>; <code>y0</code> is left untouched:</p>
+<ul>
+<li><strong><code>mode = &quot;constant&quot;</code></strong> — every unit in a
+stratum gets exactly its stratum effect, so <span class="math inline">\(Y_i(1) = Y_i(0) + \tau_{s(i)}\)</span> where <span class="math inline">\(s(i)\)</span> is the unit’s stratum.</li>
+<li><strong><code>mode = &quot;heterogeneous&quot;</code></strong> — each unit
+draws <span class="math inline">\(Y_i(1) = Y_i(0) + \tau_{s(i)}
+\cdot \varepsilon_i\)</span> with <span class="math inline">\(\varepsilon_i \sim \mathcal{N}(1, 0.1)\)</span>,
+and the stratum is then re-centered so that <span class="math inline">\(\operatorname{mean}(y1 - y0) =
+\tau_{s(i)}\)</span> exactly within each stratum.</li>
+</ul>
+<p>Two consequences worth noting:</p>
+<ol style="list-style-type: decimal">
+<li>The treatment effect enters <strong>entirely through
+<code>y1</code></strong>. The baseline <code>y0</code> is homogeneous
+noise that carries no information about compliance type — it is
+identically distributed across all three strata.</li>
+<li>Because <code>y0</code> has no covariate structure of its own, the
+covariate example above must <em>add</em> prognostic covariates on top
+of <code>Y_observed</code> for covariate adjustment to have anything to
+explain. If you need stratum-specific baselines, that would have to be
+added to <code>gen_outcome_raw_normal()</code>; it is not modeled by
+default.</li>
+</ol>
 <h1 id="references">References</h1>
 <p>[1] Anderson, T. W., &amp; Rubin, H. (1949). Estimation of the
 parameters of a single equation in a complete system of stochastic

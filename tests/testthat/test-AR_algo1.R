@@ -46,7 +46,7 @@ prep_inputs <- function(df, seed = 123, n_rand = 150) {
 
 test_that("AR_algo1 returns a named list with confidence_set and p_value", {
   p <- prep_inputs(make_ar_data())
-  res <- quiet(AR_algo1(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  res <- quiet(AR_algo1(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                         zsim = p$zsim, tol = 1e-8, alpha = 0.95))
   expect_type(res, "list")
   expect_named(res, c("confidence_set", "p_value"))
@@ -58,11 +58,11 @@ test_that("AR_algo1 returns a named list with confidence_set and p_value", {
 
 test_that("p_value matches an independent (1 + count)/(1 + n) recomputation", {
   p <- prep_inputs(make_ar_data())
-  res <- quiet(AR_algo1(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  res <- quiet(AR_algo1(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                         zsim = p$zsim, tol = 1e-8, alpha = 0.95))
 
   # Recompute AR(0) for observed data and every permutation, independently.
-  dt <- p$inputs$without
+  dt <- p$inputs$without_covariates
   obs <- solve_coef_01(dt, p$N1, p$N0)
   sim <- sapply(seq_len(ncol(p$zsim)), function(i) {
     d <- dt
@@ -78,7 +78,7 @@ test_that("p_value matches an independent (1 + count)/(1 + n) recomputation", {
 
 test_that("p_value lies in (0, 1]", {
   p <- prep_inputs(make_ar_data())
-  res <- quiet(AR_algo1(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  res <- quiet(AR_algo1(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                         zsim = p$zsim, tol = 1e-8, alpha = 0.95))
   expect_gt(res$p_value, 0)
   expect_lte(res$p_value, 1)
@@ -89,7 +89,7 @@ test_that("p_value lies in (0, 1]", {
 test_that("duality: 0 is in the CS  <=>  p_value > alpha_sig", {
   # n_rand chosen so alpha_sig*(n+1) is non-integer => no boundary ties.
   p <- prep_inputs(make_ar_data(tau_c = 2), n_rand = 150)
-  res <- quiet(AR_algo1(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  res <- quiet(AR_algo1(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                         zsim = p$zsim, tol = 1e-8, alpha = 0.95))
   alpha_sig <- 1 - 0.95
   zero_in_cs <- any(vapply(res$confidence_set,
@@ -102,7 +102,7 @@ test_that("duality: 0 is in the CS  <=>  p_value > alpha_sig", {
 
 test_that("every confidence interval is ordered lower <= upper", {
   p <- prep_inputs(make_ar_data())
-  res <- quiet(AR_algo1(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  res <- quiet(AR_algo1(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                         zsim = p$zsim, tol = 1e-8, alpha = 0.95))
   for (iv in res$confidence_set) {
     expect_length(iv, 2)
@@ -114,9 +114,9 @@ test_that("every confidence interval is ordered lower <= upper", {
 
 test_that("same inputs -> identical p_value and confidence_set", {
   p <- prep_inputs(make_ar_data())
-  a <- quiet(AR_algo1(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  a <- quiet(AR_algo1(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                       zsim = p$zsim, tol = 1e-8, alpha = 0.95))
-  b <- quiet(AR_algo1(p$inputs$without, N1 = p$N1, N0 = p$N0,
+  b <- quiet(AR_algo1(p$inputs$without_covariates, N1 = p$N1, N0 = p$N0,
                       zsim = p$zsim, tol = 1e-8, alpha = 0.95))
   expect_identical(a$p_value, b$p_value)
   expect_identical(a$confidence_set, b$confidence_set)
@@ -129,10 +129,10 @@ test_that("a strong complier effect yields a smaller p-value than the null", {
   p_null   <- prep_inputs(make_ar_data(tau_c = 0,  seed = 7), seed = 7)
   p_strong <- prep_inputs(make_ar_data(tau_c = 8,  seed = 7), seed = 7)
 
-  r_null <- quiet(AR_algo1(p_null$inputs$without, N1 = p_null$N1,
+  r_null <- quiet(AR_algo1(p_null$inputs$without_covariates, N1 = p_null$N1,
                            N0 = p_null$N0, zsim = p_null$zsim,
                            tol = 1e-8, alpha = 0.95))
-  r_strong <- quiet(AR_algo1(p_strong$inputs$without, N1 = p_strong$N1,
+  r_strong <- quiet(AR_algo1(p_strong$inputs$without_covariates, N1 = p_strong$N1,
                              N0 = p_strong$N0, zsim = p_strong$zsim,
                              tol = 1e-8, alpha = 0.95))
   expect_lt(r_strong$p_value, r_null$p_value)

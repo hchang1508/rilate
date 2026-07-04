@@ -50,8 +50,7 @@ The package supports covariate adjustment via linear regression, which can impro
 
 ## Complete Randomization Design (Important) 
 
-The package currently supports completely randomized designs with a binary treatment. The remaining statistical regularity conditions for asymptotic g
-uarantees are stated in [[2]](https://academic.oup.com/biomet/article/113/2/asag010/8487895).
+The package currently supports completely randomized designs with a binary treatment. The remaining statistical regularity conditions for asymptotic guarantees are stated in [[2]](https://academic.oup.com/biomet/article/113/2/asag010/8487895).
 
 # Note
  1. The package includes two algorithms that implement the same inferential procedure but differ in speed. Algorithm 2 is faster and is used by default; Algorithm 1 is retained for comparison and validation.
@@ -85,6 +84,9 @@ prints a human-readable setup report to the console. The number of simulated ran
 ```{r sim-data}
 library(rilate)
 
+#####################################################################################
+########generate random data ########################################################
+#####################################################################################
 set.seed(7)
 sim <- gen_sim_data(
   N         = 800,
@@ -95,21 +97,23 @@ sim <- gen_sim_data(
 )
 dat <- as.data.frame(sim$observed)  # columns: Y_observed, D_observed, assignment
 
-# run_rilate() prints a setup report and a per-step progress trace to the
-# console; we capture (suppress) it here and keep only the returned object.
-invisible(capture.output(
-  res_nocov <- run_rilate(dat, y = "Y_observed", d = "D_observed",
-                          z = "assignment", n_rand = 1000, seed = 1)
-))
 
-res_nocov$results$without$confidence_set   # 95% confidence set for the LATE
-res_nocov$results$without$p_value          # randomization p-value (H0: LATE = 0)
+#####################################################################################
+########run run_rilate ##############################################################
+#####################################################################################
+# run_rilate() prints a setup report and a per-step progress trace to the
+# console; pass verbose = FALSE to run silently and keep the returned object.
+res_nocov <- run_rilate(dat, y = "Y_observed", d = "D_observed",
+                        z = "assignment", n_rand = 1000, verbose = FALSE)
+
+res_nocov$results$without_covariates$confidence_set   # 95% confidence set for the LATE
+res_nocov$results$without_covariates$p_value          # randomization p-value (H0: LATE = 0)
 ```
 
-The 95% confidence set covers the true LATE of `1`. `run_rilate()` returns a list
+`run_rilate()` returns a list
 with the prepared inputs and metadata (`algorithm`, `alpha`, `tol`, `N`, `N1`,
 `N0`, `runs`, `covariates`, `zsim`, `inputs`, `guard`) plus `results`. Each element
-of `results` (`without` and, when applicable, `with`) holds a `confidence_set`
+of `results` (`without_covariates` and, when applicable, `with_covariates`) holds a `confidence_set`
 (a list of `[lower, upper]` intervals) and a `p_value` (the randomization p-value
 for the null $\tau_{\text{LATE}} = 0$).
 
@@ -127,14 +131,12 @@ dat$Y_observed <- dat$Y_observed + 2 * dat$x1 - 1.5 * dat$x2
 head(dat)
 
 # Passing `x` runs both an unadjusted and a covariate-adjusted analysis.
-invisible(capture.output(
-  res <- run_rilate(dat, y = "Y_observed", d = "D_observed", z = "assignment",
-                    x = c("x1", "x2"), n_rand = 1000, seed = 1)
-))
+res <- run_rilate(dat, y = "Y_observed", d = "D_observed", z = "assignment",
+                  x = c("x1", "x2"), n_rand = 1000, seed = 1, verbose = FALSE)
 ```
 
-The result carries a `without`- and a `with`-covariates entry, each with a
-`confidence_set` and a `p_value`:
+The result carries a `without_covariates` and a `with_covariates` entry, each with
+a `confidence_set` and a `p_value`:
 
 ```{r summarise}
 fmt_cs   <- function(cs) paste(vapply(cs, function(iv)
@@ -143,20 +145,20 @@ cs_width <- function(cs) sum(vapply(cs, function(iv) diff(iv), numeric(1)))
 
 data.frame(
   analysis = c("without covariates", "with covariates"),
-  p_value  = round(c(res$results$without$p_value, res$results$with$p_value), 4),
-  CS_95    = c(fmt_cs(res$results$without$confidence_set),
-               fmt_cs(res$results$with$confidence_set)),
-  width    = round(c(cs_width(res$results$without$confidence_set),
-                     cs_width(res$results$with$confidence_set)), 3),
+  p_value  = round(c(res$results$without_covariates$p_value, res$results$with_covariates$p_value), 4),
+  CS_95    = c(fmt_cs(res$results$without_covariates$confidence_set),
+               fmt_cs(res$results$with_covariates$confidence_set)),
+  width    = round(c(cs_width(res$results$without_covariates$confidence_set),
+                     cs_width(res$results$with_covariates$confidence_set)), 3),
   row.names = NULL
 )
 ```
 
-Both 95% confidence sets cover the true LATE of `1`. Adjusting for the two
+Adjusting for the two
 prognostic covariates shrinks the confidence set roughly sevenfold (from about
 `[0.20, 2.42]`, width `2.22`, to `[1.07, 1.38]`, width `0.31`) and sharpens the
 p-value for $\tau_{\text{LATE}} = 0$ from about `0.022` to `0.001`. This is the
-precision gain covariate adjustment buys when the covariates are prognostic for
+precision gain covariate adjustment buys when the covariates are predictive for
 the outcome.
 
 

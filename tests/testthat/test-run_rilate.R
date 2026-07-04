@@ -60,7 +60,7 @@ test_that("run_rilate maps custom y/d/z names", {
   df <- make_df()
   names(df) <- c("out", "took", "z", "x1", "x2")
   quiet(res <- run_rilate(df, y = "out", d = "took", z = "z", seed = 1, n_rand = NR))
-  expect_equal(colnames(res$inputs$without),
+  expect_equal(colnames(res$inputs$without_covariates),
                c("Y_observed", "D_observed", "assignment"))
 })
 
@@ -94,33 +94,33 @@ test_that("x = NULL (default) uses no covariates, even with extra columns", {
   # make_df() has x1/x2 columns, but without `x` they must be ignored.
   quiet(res <- run_rilate(make_df(), seed = 1, n_rand = NR))
   expect_length(res$covariates, 0)
-  expect_equal(res$runs, "without")
-  expect_null(res$inputs$with)
+  expect_equal(res$runs, "without_covariates")
+  expect_null(res$inputs$with_covariates)
   expect_null(res$guard)
 })
 
 test_that("x names covariates -> both without- and with-covariates versions", {
   quiet(res <- run_rilate(make_df(), x = c("x1", "x2"), seed = 1, n_rand = NR))
   expect_equal(res$covariates, c("x1", "x2"))
-  expect_equal(res$runs, c("without", "with"))
-  expect_false(is.null(res$inputs$with))
+  expect_equal(res$runs, c("without_covariates", "with_covariates"))
+  expect_false(is.null(res$inputs$with_covariates))
   # with-cov table keeps the covariates; without-cov table drops them
-  expect_true(all(c("x1", "x2") %in% colnames(res$inputs$with)))
-  expect_false(any(c("x1", "x2") %in% colnames(res$inputs$without)))
+  expect_true(all(c("x1", "x2") %in% colnames(res$inputs$with_covariates)))
+  expect_false(any(c("x1", "x2") %in% colnames(res$inputs$without_covariates)))
 })
 
 test_that("x can select a subset of columns as covariates", {
   quiet(res <- run_rilate(make_df(), x = "x1", seed = 1, n_rand = NR))
   expect_equal(res$covariates, "x1")
-  expect_true("x1" %in% colnames(res$inputs$with))
-  expect_false("x2" %in% colnames(res$inputs$with))
+  expect_true("x1" %in% colnames(res$inputs$with_covariates))
+  expect_false("x2" %in% colnames(res$inputs$with_covariates))
 })
 
 test_that("with_covariate = FALSE prepares only the without-cov version", {
   quiet(res <- run_rilate(make_df(), x = c("x1", "x2"),
                       with_covariate = FALSE, seed = 1, n_rand = NR))
-  expect_equal(res$runs, "without")
-  expect_null(res$inputs$with)
+  expect_equal(res$runs, "without_covariates")
+  expect_null(res$inputs$with_covariates)
 })
 
 # --- `x` validation ----------------------------------------------------------
@@ -128,7 +128,7 @@ test_that("with_covariate = FALSE prepares only the without-cov version", {
 test_that("x = character(0) is treated as no covariates", {
   quiet(res <- run_rilate(make_df(), x = character(0), seed = 1, n_rand = NR))
   expect_length(res$covariates, 0)
-  expect_equal(res$runs, "without")
+  expect_equal(res$runs, "without_covariates")
 })
 
 test_that("non-character x is rejected", {
@@ -151,8 +151,8 @@ test_that("x overlapping the y/d/z columns errors", {
 
 test_that("covariates are demeaned to (numerically) zero mean", {
   quiet(res <- run_rilate(make_df(), x = c("x1", "x2"), seed = 1, n_rand = NR))
-  expect_equal(mean(res$inputs$with$x1), 0, tolerance = 1e-12)
-  expect_equal(mean(res$inputs$with$x2), 0, tolerance = 1e-12)
+  expect_equal(mean(res$inputs$with_covariates$x1), 0, tolerance = 1e-12)
+  expect_equal(mean(res$inputs$with_covariates$x2), 0, tolerance = 1e-12)
 })
 
 test_that("a demeaning message is printed and names the covariates", {
@@ -232,10 +232,10 @@ test_that("seed makes zsim reproducible", {
 test_that("run_rilate returns CS + p_value per version", {
   quiet(res <- run_rilate(make_late_df(), algorithm = "algo2", n_rand = 60,
                       seed = 1))
-  expect_named(res$results$without, c("confidence_set", "p_value"))
-  expect_true(is.list(res$results$without$confidence_set))
-  expect_gt(res$results$without$p_value, 0)
-  expect_lte(res$results$without$p_value, 1)
+  expect_named(res$results$without_covariates, c("confidence_set", "p_value"))
+  expect_true(is.list(res$results$without_covariates$confidence_set))
+  expect_gt(res$results$without_covariates$p_value, 0)
+  expect_lte(res$results$without_covariates$p_value, 1)
 })
 
 test_that("run_rilate result matches calling the algorithm directly", {
@@ -243,24 +243,24 @@ test_that("run_rilate result matches calling the algorithm directly", {
   # those must reproduce the embedded result exactly.
   quiet(res <- run_rilate(make_late_df(), algorithm = "algo2", n_rand = 60,
                       seed = 1))
-  quiet(direct <- AR_algo2(res$inputs$without, N1 = res$N1, N0 = res$N0,
+  quiet(direct <- AR_algo2(res$inputs$without_covariates, N1 = res$N1, N0 = res$N0,
                            zsim = res$zsim, tol = res$tol, alpha = res$alpha))
-  expect_equal(res$results$without$p_value, direct$p_value)
-  expect_equal(res$results$without$confidence_set, direct$confidence_set)
+  expect_equal(res$results$without_covariates$p_value, direct$p_value)
+  expect_equal(res$results$without_covariates$confidence_set, direct$confidence_set)
 })
 
 test_that("run_rilate dispatches to algo1 when requested", {
   quiet(res <- run_rilate(make_late_df(), algorithm = "algo1", n_rand = 60,
                       seed = 1))
   expect_equal(res$algorithm, "algo1")
-  expect_named(res$results$without, c("confidence_set", "p_value"))
+  expect_named(res$results$without_covariates, c("confidence_set", "p_value"))
 })
 
 test_that("run_rilate with covariates returns results for both versions", {
   df <- make_late_df()
   df$w <- rnorm(nrow(df))   # a covariate
   quiet(res <- run_rilate(df, x = "w", algorithm = "algo2", n_rand = 60, seed = 1))
-  expect_equal(res$runs, c("without", "with"))
-  expect_named(res$results$without, c("confidence_set", "p_value"))
-  expect_named(res$results$with, c("confidence_set", "p_value"))
+  expect_equal(res$runs, c("without_covariates", "with_covariates"))
+  expect_named(res$results$without_covariates, c("confidence_set", "p_value"))
+  expect_named(res$results$with_covariates, c("confidence_set", "p_value"))
 })
