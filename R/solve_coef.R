@@ -34,10 +34,10 @@ solve_coef_01 <- function(data_table, N1, N0) {
   data_tableD0 = data_tableD[which(data_tableD$assignment == 0), ]  # compliance data for control group
 
   # Run regressions
-  regy1 = lm(Y_observed ~ . - assignment, data = data_tableY1)  # outcome regression for treated group
-  regy0 = lm(Y_observed ~ . - assignment, data = data_tableY0)  # outcome regression for control group
-  regd1 = lm(D_observed ~ . - assignment, data = data_tableD1)  # compliance regression for treated group
-  regd0 = lm(D_observed ~ . - assignment, data = data_tableD0)  # compliance regression for control group
+  regy1 = stats::lm(Y_observed ~ . - assignment, data = data_tableY1)  # outcome regression for treated group
+  regy0 = stats::lm(Y_observed ~ . - assignment, data = data_tableY0)  # outcome regression for control group
+  regd1 = stats::lm(D_observed ~ . - assignment, data = data_tableD1)  # compliance regression for treated group
+  regd0 = stats::lm(D_observed ~ . - assignment, data = data_tableD0)  # compliance regression for control group
   
   # Extract adjusted averages from intercepts
   ty1 = regy1$coef['(Intercept)']  # adjusted average outcome for the treated group

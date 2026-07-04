@@ -50,7 +50,7 @@ gen_outcome_raw_normal=function(Nat,Nnt,Nc){
     indices=1:N
 
     # Generate potential outcomes
-    y1=rnorm(N,0,1) #note what y1 equals here does not matter. They are going to be overwritten later in the function add_effects_to_raw_outcomes
+    y1=stats::rnorm(N,0,1) #note what y1 equals here does not matter. They are going to be overwritten later in the function add_effects_to_raw_outcomes
     y0=y1 
     d1=c(rep(1,Nat),rep(0,Nnt),rep(1,Nc))
     d0=c(rep(1,Nat),rep(0,Nnt),rep(0,Nc))
@@ -135,7 +135,7 @@ add_effects_to_raw_outcomes=function(outcome_raw,tau_at,tau_nt,tau_c,N_at,N_nt,N
         # Heterogeneous effects scaled around each group's target tau.
         # Extract raw outcomes
         if (tau_at!=0){
-            eff_at =  tau_at*rnorm(N_at,1,0.1)  #
+            eff_at =  tau_at*stats::rnorm(N_at,1,0.1)  #
             #eff_at =  rep(tau_at,N_at)
 
 
@@ -146,7 +146,7 @@ add_effects_to_raw_outcomes=function(outcome_raw,tau_at,tau_nt,tau_c,N_at,N_nt,N
         }
 
         if (tau_nt!=0){
-            eff_nt =  tau_nt*rnorm(N_nt,1,0.1)
+            eff_nt =  tau_nt*stats::rnorm(N_nt,1,0.1)
             #eff_nt = rep(tau_nt,N_nt)
 
         }else {
@@ -156,11 +156,11 @@ add_effects_to_raw_outcomes=function(outcome_raw,tau_at,tau_nt,tau_c,N_at,N_nt,N
         }
 
         if (tau_c!=0){
-            eff_c =  tau_c*rnorm(N_c,1,0.1)
+            eff_c =  tau_c*stats::rnorm(N_c,1,0.1)
             #eff_c = rep(tau_c,N_c)
             #eff_c =  tau_c
         }else {
-            eff_c = rnorm(N_c,0,0.1)
+            eff_c = stats::rnorm(N_c,0,0.1)
             #eff_c = rep(tau_c,N_c)
         }
     }
