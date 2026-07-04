@@ -160,12 +160,16 @@ find_quantile_at_point <- function(beta, AR_sim_coef, alpha, tol = 1e-8) {
 select_intervals_for_region <- function(left, right, index, intervals, mapping, all_indices) {
   # Select intervals that fall within [left, right]
 
-  # Find which quantile index corresponds to this region
-  quantile_idx <- mapping[mapping[, 1] == index, 2]
-
-  if (length(quantile_idx) == 0) {
+  # Find which quantile index corresponds to this region.
+  # `mapping` is built as cbind(1:G, unlist(indices)) by both AR_algo1() and
+  # AR_algo2(), so column 1 is exactly 1, 2, 3, ... -- the row whose first
+  # column equals `index` is always row `index`. Use a direct O(1) lookup rather
+  # than the linear scan `mapping[mapping[, 1] == index, 2]`, which made this
+  # helper O(G) per call and Step 6 overall O(G^2) ~ O(n_rand^4).
+  if (index < 1 || index > nrow(mapping)) {
     return(NULL)
   }
+  quantile_idx <- mapping[index, 2]
 
   # Find which intervals correspond to this quantile
   interval_list_idx <- which(all_indices == quantile_idx)
