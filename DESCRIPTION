@@ -15,10 +15,7 @@ License: MIT + file LICENSE
 URL: https://github.com/hchang1508/rilate
 BugReports: https://github.com/hchang1508/rilate/issues
 Imports:
-    ivreg,
-    lmtest,
-    pbapply,
-    sandwich
+    pbapply
 Suggests:
     testthat (>= 3.0.0)
 Encoding: UTF-8

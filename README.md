@@ -1,7 +1,7 @@
-RI for LATE (under construction)
+RI for LATE
 ================
 
-**Author:** Arya Gadage and Haoge Chang<br/> **Last updated:** July 03,
+**Author:** Arya Gadage and Haoge Chang<br/> **Last updated:** July 04,
 2026
 
 # Introduction
@@ -29,7 +29,7 @@ $i = 1, \ldots, n$, and for each let
 - $D_i(1), D_i(0)$ — the treatment actually taken when assigned to
   treatment and to control.
 
-A **complier** is an individual with $D_i(1) > D_i(0)$: they take the
+A complier is an individual with $D_i(1) > D_i(0)$: they take the
 treatment when assigned to it, but not otherwise. We use
 $\mathcal{C}=\{i \,:\, D_i(1) > D_i(0)\}$ to denote the set of
 compliers. The LATE is the average treatment effect over this group,
@@ -58,371 +58,114 @@ can improve precision and guard against chance covariate imbalance.
 # (Important) Complete Randomization Design
 
 The package currently supports completely randomized designs with a
-binary treatment. The remaining statistical regularity conditions are
-stated in
+binary treatment. The remaining statistical regularity conditions for
+asymptotic g uarantees are stated in
 [\[2\]](https://academic.oup.com/biomet/article/113/2/asag010/8487895).
 
+# Note
+
+1.  The package includes two algorithms that implement the same
+    inferential procedure but differ in speed. Algorithm 2 is faster and
+    is used by default; Algorithm 1 is retained for comparison and
+    validation.
+2.  The authors used Claude to migrate the original code from
+    [\[2\]](https://academic.oup.com/biomet/article/113/2/asag010/8487895)
+    into this repository and to help design the test cases.
+
+## Demonstration
+
+# Synthetic Data Example
+
+The workflow has three steps: simulate a randomized experiment with
+noncompliance, (optionally) attach baseline covariates, and call
+`run_AR()`.
+
+**1. Simulate the experiment.** `gen_sim_data()` draws a completely
+randomized experiment from a population of always-takers, compliers, and
+never-takers. Here the true complier effect (the LATE) is `1`.
+
 ``` r
-# Source the required files
-source("B_solve_coef.R")
-source("B_calculate_intersections.R")
-source("B_find_intervals.R")
-source("B_AR_algo1.R")
-source("B_AR_algo2.R")
-source("B_gen_data.R")
+library(rilate)
 
-# Load required packages
-library(pbapply)
-```
-
-# Quick Start
-
-## Basic Example
-
-``` r
-library(pbapply)
-
-# 1. Prepare your data
-data_table <- data.frame(
-  Y_observed = outcomes,           # Your outcome variable
-  D_observed = actual_treatment,   # Actual treatment received (0/1)
-  assignment = random_assignment,  # Random assignment (0/1)
-  x1 = covariate1 - mean(covariate1)  # Centered covariates
+set.seed(7)
+sim <- gen_sim_data(
+  N         = 800,
+  N1        = 400,                  # 400 assigned to treatment, 400 to control
+  fractions = c(0.20, 0.50, 0.30),  # always-takers, compliers, never-takers
+  taus      = c(0, 1, 0),           # principal-stratum effects; complier LATE = 1
+  mode      = "constant"
 )
+dat <- as.data.frame(sim$observed)  # columns: Y_observed, D_observed, assignment
+```
 
-# 2. Count treatment assignments
-N1 <- sum(data_table$assignment)  # Number assigned to treatment
-N0 <- nrow(data_table) - N1       # Number assigned to control
+**2. Attach prognostic covariates.** `gen_sim_data()` returns only the
+outcome, treatment, and assignment, so we append two baseline covariates
+by hand. They are drawn independently of assignment (randomization keeps
+them balanced across arms) but drive part of the outcome, so adjusting
+for them removes noise and sharpens inference.
 
-# 3. Generate 1000 random permutations
-set.seed(123)
-zsim <- pbsapply(1:1000, gen_assignment_CR_index, N1 = N1, N0 = N0)
+``` r
+n <- nrow(dat)
+dat$x1 <- rnorm(n)
+dat$x2 <- rnorm(n)
+dat$Y_observed <- dat$Y_observed + 2 * dat$x1 - 1.5 * dat$x2
 
-# 4. Run the fast algorithm (recommended)
-ci <- AR_algo2_custom(
-  data_table = data_table,
-  N1 = N1,
-  N0 = N0,
-  zsim = zsim,
-  tol = 1e-8,
-  alpha = 0.95
+head(dat)
+#>   Y_observed D_observed assignment         x1         x2
+#> 1  3.0577435          1          1 -0.2852178 -0.8939547
+#> 2  0.7056030          1          0 -0.1503482 -1.4687140
+#> 3  1.5291546          1          0  0.7906237 -0.4281331
+#> 4  1.5293415          1          0  1.1918356  0.2946912
+#> 5 -0.7523978          1          1 -0.3399238 -0.5987488
+#> 6  1.8289233          1          1  0.7891082 -0.7986579
+```
+
+**3. Run the randomization inference procedure.** Passing `x` runs
+*both* an unadjusted analysis and a covariate-adjusted one. Each returns
+a confidence set for the LATE and a randomization p-value for the sharp
+null ($Y_i(1)=Y_i(0)$ for all compliers) and weak null
+($\tau_{\text{LATE}} = 0$). (`run_AR()` also prints a human-readable
+report to the console; it is suppressed here.)
+
+``` r
+invisible(capture.output(
+  res <- run_AR(dat, x = c("x1", "x2"), algorithm = "algo2",
+                n_rand = 1000, seed = 1)
+))
+```
+
+The result carries a `without`- and a `with`-covariates entry, each with
+a `confidence_set` and a `p_value`:
+
+``` r
+fmt_cs   <- function(cs) paste(vapply(cs, function(iv)
+  sprintf("[%.3f, %.3f]", iv[1], iv[2]), character(1)), collapse = " U ")
+cs_width <- function(cs) sum(vapply(cs, function(iv) diff(iv), numeric(1)))
+
+data.frame(
+  analysis = c("without covariates", "with covariates"),
+  p_value  = round(c(res$results$without$p_value, res$results$with$p_value), 4),
+  CS_95    = c(fmt_cs(res$results$without$confidence_set),
+               fmt_cs(res$results$with$confidence_set)),
+  width    = round(c(cs_width(res$results$without$confidence_set),
+                     cs_width(res$results$with$confidence_set)), 3),
+  row.names = NULL
 )
-
-# 5. View results
-print(ci)
-# [[1]]
-# [1] 0.152 0.548
+#>             analysis p_value           CS_95 width
+#> 1 without covariates  0.2697 [-0.468, 1.494] 1.962
+#> 2    with covariates  0.0010  [0.832, 1.540] 0.708
 ```
 
-# Real Data Example
-
-## Education Program with Low Compliance
-
-``` r
-# Load data
-data <- read.csv("ALO_data.csv")
-
-# Filter to analysis sample
-data_males <- data[data$sex == "M", ]
-data_ssp <- data_males[data_males$control == 1 | data_males$ssp == 1, ]
-
-# Prepare data table
-data_table <- data.frame(
-  Y_observed = data_ssp$GPA_year1,
-  D_observed = data_ssp$ssp_p,        # Actual participation
-  assignment = data_ssp$ssp,          # Random assignment
-  x1 = data_ssp$gpa0                  # Baseline GPA
-)
-
-# Remove missing values
-data_table <- data_table[complete.cases(data_table), ]
-
-# Center covariates
-data_table$x1 <- data_table$x1 - mean(data_table$x1)
-
-# Sample characteristics
-cat("Sample size:", nrow(data_table), "\n")
-cat("Assigned to treatment:", sum(data_table$assignment), "\n")
-cat("Actually participated:", sum(data_table$D_observed), "\n")
-cat("Compliance rate:", 
-    sum(data_table$D_observed[data_table$assignment == 1]) / 
-    sum(data_table$assignment), "\n")
-
-# Output:
-# Sample size: 494
-# Assigned to treatment: 99
-# Actually participated: 45
-# Compliance rate: 0.4545
-```
-
-## Run Analysis
-
-``` r
-# Setup
-N1 <- sum(data_table$assignment)
-N0 <- nrow(data_table) - N1
-
-# Generate permutations
-set.seed(123)
-zsim <- pbsapply(1:1000, gen_assignment_CR_index, N1 = N1, N0 = N0)
-
-# Run Anderson-Rubin test
-ci_ar <- AR_algo2_custom(
-  data_table = data_table,
-  N1 = N1,
-  N0 = N0,
-  zsim = zsim,
-  alpha = 0.95
-)
-
-print(ci_ar)
-# [[1]]
-# [1] 0.152 0.548
-```
-
-## Compare with 2SLS
-
-``` r
-library(ivreg)
-library(lmtest)
-library(sandwich)
-
-# Traditional 2SLS
-fit_2sls <- ivreg(GPA_year1 ~ ssp_p + gpa0 | ssp + gpa0, data = data_ssp)
-coef_2sls <- coef(fit_2sls)[2]
-ci_2sls <- confint(fit_2sls, vcov = vcovHC(fit_2sls, type = "HC1"))[2, ]
-
-# Compare results
-cat("\n=== COMPARISON ===\n")
-cat("2SLS Point Estimate:", round(coef_2sls, 3), "\n")
-cat("2SLS 95% CI: [", round(ci_2sls[1], 3), ",", round(ci_2sls[2], 3), "]\n")
-cat("AR 95% CI: [", round(ci_ar[[1]][1], 3), ",", round(ci_ar[[1]][2], 3), "]\n")
-
-# Output:
-# === COMPARISON ===
-# 2SLS Point Estimate: 0.367
-# 2SLS 95% CI: [ 0.245 , 0.489 ]
-# AR 95% CI: [ 0.152 , 0.548 ]
-```
-
-**Key takeaway:** The AR confidence interval is wider, appropriately
-accounting for the weak instrument from low (45%) compliance.
-
-# Algorithm Comparison
-
-This section demonstrates the performance differences between Algorithm
-1 and Algorithm 2, and shows how the number of permutations affects
-results.
-
-## Comparison 1: Algorithm 1 vs Algorithm 2 (1000 Permutations)
-
-Both algorithms give identical results but differ dramatically in speed.
-Here’s a real comparison on the ALO dataset:
-
-``` r
-# Using the same prepared data from above
-# Generate 1000 permutations (same for both algorithms)
-set.seed(123)
-zsim <- pbsapply(1:1000, gen_assignment_CR_index, N1 = N1, N0 = N0)
-
-# Run Algorithm 1
-time1 <- system.time({
-  ci1 <- AR_algo1_custom(data_table, N1, N0, zsim, alpha = 0.95)
-})
-
-# Run Algorithm 2
-time2 <- system.time({
-  ci2 <- AR_algo2_custom(data_table, N1, N0, zsim, alpha = 0.95)
-})
-```
-
-**Results:**
-
-| Metric   | Algorithm 1      | Algorithm 2      |
-|----------|------------------|------------------|
-| Runtime  | 45.2 minutes     | 6.8 minutes      |
-| 95% CI   | \[0.152, 0.548\] | \[0.152, 0.548\] |
-| CI Width | 0.396            | 0.396            |
-
-**Key Finding:** Algorithm 2 is **6-7x faster** while producing
-**identical** confidence intervals.
-
-## Comparison 2: 1000 vs 10000 Permutations (Algorithm 2)
-
-Does using more permutations improve precision? Here’s a comparison:
-
-``` r
-# Run with 1000 permutations
-zsim_1000 <- pbsapply(1:1000, gen_assignment_CR_index, N1 = N1, N0 = N0)
-time_1000 <- system.time({
-  ci_1000 <- AR_algo2_custom(data_table, N1, N0, zsim_1000, alpha = 0.95)
-})
-
-# Run with 10000 permutations  
-zsim_10000 <- pbsapply(1:10000, gen_assignment_CR_index, N1 = N1, N0 = N0)
-time_10000 <- system.time({
-  ci_10000 <- AR_algo2_custom(data_table, N1, N0, zsim_10000, alpha = 0.95)
-})
-```
-
-**Results:**
-
-| Metric       | 1000 Permutations | 10000 Permutations | Difference  |
-|--------------|-------------------|--------------------|-------------|
-| Runtime      | 0.37 minutes      | 55.44 minutes      | 150x longer |
-| 95% CI Lower | -0.4215           | -0.4389            | 0.0174      |
-| 95% CI Upper | 0.4027            | 0.4120             | 0.0093      |
-| CI Width     | 0.8242            | 0.8509             | 0.0267      |
-
-**Key Finding:** Using 10x more permutations takes 150x longer but gives
-**similar** results (difference \< 0.03).
-
-## Dose-Response Simulations
-
-To validate the algorithm under continuous treatment (dose-response)
-with varying instrument strength, we ran simulations following Imbens &
-Rosenbaum (2005).
-
-**Data generating process:**
-
-- **Outcome model:** Yi(di(j)) = ρW1i + √(1-ρ²)W2i where ρ = 0.95 (high
-  endogeneity)
-- **Dose model:** di(0) = \|Xi\|W1i, di(1) = γ + di(0)
-- **Treatment effect:** Yi(di(1)) = Yi(di(0)) + τ(di(1) - di(0))
-- **Sample:** N = 100 (50 treated, 50 control)
-
-We test coverage rates across different combinations of:
-
-- **γ (instrument strength):** 0 (no IV), 0.5 (weak IV), 1 (strong IV)
-- **τ (treatment effect):** 0 (null), 0.5 (moderate), 1 (large)
-
-### Results: 1000 Permutations
-
-Coverage rates (%) from 100 simulations per cell:
-
-| γ (IV Strength) | τ = 0 | τ = 0.5 | τ = 1 |
-|-----------------|-------|---------|-------|
-| 0.0 (No IV)     | 98    | 99      | 99    |
-| 0.5 (Weak IV)   | 95    | 97      | 92    |
-| 1.0 (Strong IV) | 95    | 93      | 94    |
-
-**Mean runtime:** ~21 seconds per simulation
-
-**Interpretation:**
-
-- With no/weak instrument (γ=0, 0.5), most CIs are infinite → coverage ≈
-  95-99% (correct)
-- With strong instrument (γ=1), all CIs are finite → coverage ≈ 93-95%
-  (correct)
-- All cells show proper coverage, validating the algorithm for
-  dose-response designs
-
-### Results: 10000 Permutations
-
-Coverage rates (%) from 100 simulations per cell:
-
-| γ (IV Strength) | τ = 0 | τ = 0.5 | τ = 1 |
-|-----------------|-------|---------|-------|
-| 0.0 (No IV)     | –     | –       | –     |
-| 0.5 (Weak IV)   | –     | –       | –     |
-| 1.0 (Strong IV) | –     | –       | –     |
-
-**Mean runtime:** ~\[TBD\] seconds per simulation
-
-**Interpretation:** \[To be filled in after running 10000 permutation
-simulations\]
-
-## Combined Summary
-
-Here’s a full comparison of all configurations:
-
-| Configuration          | Runtime   | 95% CI               |
-|------------------------|-----------|----------------------|
-| Algo 1, 1000 perms     | 45 min    | \[0.152, 0.548\]     |
-| **Algo 2, 1000 perms** | **7 min** | **\[0.152, 0.548\]** |
-| Algo 2, 10000 perms    | 70 min    | \[0.152, 0.548\]     |
-
-# Data Preparation
-
-## Required Data Structure
-
-Your `data_table` must contain these columns:
-
-| Column        | Description             | Example                   |
-|---------------|-------------------------|---------------------------|
-| `Y_observed`  | Outcome variable        | GPA, earnings, test score |
-| `D_observed`  | Actual treatment (0/1)  | Did they participate?     |
-| `assignment`  | Random assignment (0/1) | Were they invited?        |
-| `x1, x2, ...` | Covariates (centered)   | Baseline variables        |
-
-## Handling Categorical Covariates
-
-``` r
-# Example: Study habits (categorical with 5 levels)
-data$lastmin_never <- as.numeric(data$lastmin == "never")
-data$lastmin_sometimes <- as.numeric(data$lastmin == "sometimes")
-data$lastmin_often <- as.numeric(data$lastmin == "often")
-data$lastmin_rarely <- as.numeric(data$lastmin == "rarely")
-
-# Include in data_table (center all covariates)
-data_table <- data.frame(
-  Y_observed = data$GPA_year1,
-  D_observed = data$ssp_p,
-  assignment = data$ssp,
-  x1 = data$gpa0 - mean(data$gpa0),
-  x2 = data$lastmin_never - mean(data$lastmin_never),
-  x3 = data$lastmin_sometimes - mean(data$lastmin_sometimes),
-  x4 = data$lastmin_often - mean(data$lastmin_often),
-  x5 = data$lastmin_rarely - mean(data$lastmin_rarely)
-)
-```
-
-**Important:** Always center covariates by subtracting their mean!
-
-# Choosing Parameters
-
-## Confidence Level
-
-``` r
-# 90% confidence interval (narrower)
-ci_90 <- AR_algo2_custom(data_table, N1, N0, zsim, alpha = 0.90)
-
-# 95% confidence interval (standard)
-ci_95 <- AR_algo2_custom(data_table, N1, N0, zsim, alpha = 0.95)
-
-# 99% confidence interval (wider)
-ci_99 <- AR_algo2_custom(data_table, N1, N0, zsim, alpha = 0.99)
-```
-
-# Troubleshooting
-
-## Common Issues
-
-### Issue 1: Very wide confidence intervals
-
-This is often **correct**, not an error! Wide intervals indicate:
-
-- Low compliance rate
-- Small sample size
-- High outcome variance
-
-**Check instrument strength:**
-
-``` r
-# First-stage F-statistic
-stage1 <- lm(D_observed ~ assignment, data = data_table)
-f_stat <- summary(stage1)$fstatistic[1]
-cat("F-statistic:", round(f_stat, 2), "\n")
-# Rule of thumb: F > 10 indicates strong instrument
-```
-
-### Issue 2: Algorithm is slow
-
-**Solutions:**
-
-1.  Use Algorithm 2 (not Algorithm 1)
-2.  Reduce permutations to 500 or 100 for testing
-3.  Verify `zsim` is a matrix (not being regenerated)
+Both 95% confidence sets cover the true LATE of `1`. Adjusting for the
+two prognostic covariates shrinks the confidence set roughly threefold
+(from about `[-0.47, 1.49]` to `[0.83, 1.54]`) and sharpens the p-value
+for $\tau_{\text{LATE}} = 0$ from about `0.27` — no detectable effect —
+to about `0.001`. This is the precision gain covariate adjustment buys
+when the covariates are prognostic for the outcome.
+
+# Assess Coverage
+
+# Compare Two algorithms (time )
 
 # References
 

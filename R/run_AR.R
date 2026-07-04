@@ -1,7 +1,7 @@
 ################################################################################
 ## run_AR.R
 ## User-facing wrapper around the Anderson-Rubin confidence-set algorithms
-## (AR_algo1_custom / AR_algo2_custom).
+## (AR_algo1 / AR_algo2).
 ##
 ## Responsibilities:
 ##   * accept a tidy data frame with user-named y / d / z columns (+ covariates)
@@ -11,8 +11,8 @@
 ##     either treatment group -- solve_coef_01() fits a separate regression per
 ##     group, so [1, X] must be well-conditioned in EACH group
 ##   * generate the permuted-assignment matrix (zsim)
-##   * dispatch to Algorithm 1 or 2 -- currently behind a GATE (`execute`), since
-##     the algorithms are not yet wired into the package namespace
+##   * dispatch to Algorithm 1 or 2 (AR_algo1 / AR_algo2) and return their
+##     confidence set + randomization p-value
 ################################################################################
 
 #' Run the Anderson-Rubin confidence-set procedure (wrapper)
@@ -28,15 +28,18 @@
 #' `with_covariate = FALSE`, or supply no covariates, to prepare only the
 #' without-covariates analysis.
 #'
-#' The actual algorithm call is gated by `execute`. With `execute = FALSE`
-#' (default) the function performs all preparation and validation and returns the
-#' assembled inputs without running the (not-yet-integrated) algorithms.
+#' The selected algorithm is run on each prepared version and its confidence set
+#' and randomization p-value are returned.
 #'
 #' @param data Data frame containing the outcome, treatment-received, assignment,
 #'   and (optionally) covariate columns.
 #' @param y,d,z Names of the outcome, treatment-received, and assignment columns
-#'   in `data`. Default to `"Y_observed"`, `"D_observed"`, `"assignment"`. Every
-#'   other column of `data` is treated as a covariate.
+#'   in `data`. Default to `"Y_observed"`, `"D_observed"`, `"assignment"`.
+#' @param x Optional character vector naming the covariate columns to use. If
+#'   `NULL` (default), no covariates are used and the covariate-adjusted version
+#'   is skipped. If supplied, only the named columns are used as covariates (they
+#'   must exist in `data` and must not name any of `y`/`d`/`z`); any other
+#'   columns of `data` are ignored.
 #' @param algorithm Which algorithm to use: `"algo2"` (default, fast) or
 #'   `"algo1"`.
 #' @param n_rand Number of randomizations (permuted assignments) to draw.
@@ -49,27 +52,26 @@
 #' @param cond_threshold Condition-number cutoff above which a treatment group's
 #'   covariate design `[1, X]` is treated as ill-conditioned (default `1e10`).
 #' @param seed Optional integer seed for reproducible `zsim` generation.
-#' @param execute If `TRUE`, actually invoke the selected algorithm; if `FALSE`
-#'   (default), stop after preparation and return the assembled inputs (the
-#'   "gate").
 #' @return A list with the prepared inputs and metadata: `algorithm`, `alpha`,
 #'   `tol`, `N`, `N1`, `N0`, `runs` (which versions were prepared), `covariates`,
 #'   `zsim`, `inputs` (the `without` / `with` data tables), `guard` (per-group
-#'   rank and condition numbers), and `results` (`NULL` while gated, otherwise the
-#'   algorithm output for each prepared version).
+#'   rank and condition numbers), and `results`. Each element of `results`
+#'   (`without` / `with`) is the algorithm output -- a list with `confidence_set`
+#'   (a list of `[lower, upper]` intervals) and `p_value` (the randomization
+#'   p-value for the null `beta = 0`).
 #' @export
 run_AR <- function(data,
                    y = "Y_observed",
                    d = "D_observed",
                    z = "assignment",
+                   x = NULL,
                    algorithm = c("algo2", "algo1"),
                    n_rand = 1000,
                    with_covariate = TRUE,
                    alpha = 0.95,
                    tol = 1e-8,
                    cond_threshold = 1e10,
-                   seed = NULL,
-                   execute = FALSE) {
+                   seed = NULL) {
 
     algorithm = match.arg(algorithm)
 
@@ -91,8 +93,32 @@ run_AR <- function(data,
              paste(missing_cols, collapse = ", "), ".")
     }
 
-    # Covariates are everything that is not y/d/z.
-    cov_names = setdiff(names(data), key_cols)
+    # Covariates come ONLY from `x`. When `x` is NULL (default) there are no
+    # covariates, so the covariate-adjusted version is not prepared.
+    if (is.null(x)) {
+        cov_names = character(0)
+    } else {
+        if (!is.character(x)) {
+            stop("`x` must be a character vector of covariate column names ",
+                 "(or NULL).")
+        }
+        dup_x = unique(x[duplicated(x)])
+        if (length(dup_x) > 0) {
+            stop("`x` contains duplicate column name(s): ",
+                 paste(dup_x, collapse = ", "), ".")
+        }
+        missing_x = setdiff(x, names(data))
+        if (length(missing_x) > 0) {
+            stop("Covariate column(s) named in `x` not found in `data`: ",
+                 paste(missing_x, collapse = ", "), ".")
+        }
+        overlap_x = intersect(x, key_cols)
+        if (length(overlap_x) > 0) {
+            stop("`x` must not name the y/d/z columns: ",
+                 paste(overlap_x, collapse = ", "), ".")
+        }
+        cov_names = x
+    }
 
     # --- Standardize to the names the algorithms expect ----------------------
     std = data.frame(
@@ -138,7 +164,7 @@ run_AR <- function(data,
     cat("  Sample size N        :", N, "\n")
     cat("  Treated   N1 (Z = 1) :", N1, "\n")
     cat("  Control   N0 (Z = 0) :", N0, "\n")
-    cat("  Randomizations       :", n_rand, "\n")
+    cat("  Number of simulated assignment draws :", n_rand, "\n")
     cat("  Compliance rate      :", round(compliance_rate, 4),
         "(overall D = 1 rate)\n")
     cat("     P(D = 1 | Z = 1)  :", round(p_d_treated, 4), "\n")
@@ -188,33 +214,23 @@ run_AR <- function(data,
     }
     zsim = sapply(seq_len(n_rand), gen_assignment_CR_index, N1 = N1, N0 = N0)
 
-    # --- Dispatch / GATE ------------------------------------------------------
+    # --- Dispatch -------------------------------------------------------------
     algo_fun_name = switch(algorithm,
-                           algo1 = "AR_algo1_custom",
-                           algo2 = "AR_algo2_custom")
+                           algo1 = "AR_algo1",
+                           algo2 = "AR_algo2")
 
     results = list(without = NULL, with = NULL)
 
-    if (!isTRUE(execute)) {
-        # Gate closed: prepared everything, but do not touch the algorithms.
-        for (r in runs) {
-            cat("[GATE] prepared ", algo_fun_name, "() for the ",
-                toupper(r), "-covariates data; not executed ",
-                "(execute = FALSE).\n", sep = "")
-        }
-        cat("\n")
-    } else {
-        if (!exists(algo_fun_name, mode = "function")) {
-            stop(algo_fun_name, "() not found. Source the algorithm file ",
-                 "(e.g. B_AR_", algorithm, ".R) before calling with ",
-                 "execute = TRUE.")
-        }
-        algo_fun = match.fun(algo_fun_name)
-        for (r in runs) {
-            dt = if (r == "with") data_with else data_without
-            results[[r]] = algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
-                                    tol = tol, alpha = alpha)
-        }
+    if (!exists(algo_fun_name, mode = "function")) {
+        stop(algo_fun_name, "() not found. It is part of the rilate ",
+             "package; load the package (or source R/AR_", algorithm,
+             ".R and R/AR_helpers.R) first.")
+    }
+    algo_fun = match.fun(algo_fun_name)
+    for (r in runs) {
+        dt = if (r == "with") data_with else data_without
+        results[[r]] = algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
+                                tol = tol, alpha = alpha)
     }
 
     return(list(

@@ -2,3 +2,4 @@
 
 export(gen_assignment_CR)
 export(gen_sim_data)
+export(run_AR)
