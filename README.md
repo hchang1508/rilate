@@ -31,15 +31,15 @@ $i = 1, \ldots, n$, and for each let
 
 A complier is an individual with $D_i(1) > D_i(0)$: they take the
 treatment when assigned to it, but not otherwise. We use
-$\mathcal{C}=\{i \,:\, D_i(1) > D_i(0)\}$ to denote the set of
+$\mathcal{C} = \lbrace i : D_i(1) > D_i(0) \rbrace$ to denote the set of
 compliers. The LATE is the average treatment effect over this group,
 
 $$
-\tau_{\text{LATE}} \;=\; \frac{1}{n_c} \sum_{i \in \mathcal{C}} \bigl( Y_i(1) - Y_i(0) \bigr),
+\tau_{\text{LATE}} = \frac{1}{n_c} \sum_{i \in \mathcal{C}} \left( Y_i(1) - Y_i(0) \right)
 $$
 
-where $n_c = |\mathcal{C}|$ is the number of compliers. This package
-provides a randomization-based inferential procedure for
+where $n_c = \lvert \mathcal{C} \rvert$ is the number of compliers. This
+package provides a randomization-based inferential procedure for
 $\tau_{\text{LATE}}$ with two complementary guarantees:
 
 - **Tests and p-values** are *finite-sample valid* for testing the sharp
