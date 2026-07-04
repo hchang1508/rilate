@@ -15,27 +15,26 @@
 #
 # ==============================================================================
 
-# ==============================================================================
-# Main Function: AR Algorithm 1
-# ==============================================================================
-
+#' Anderson-Rubin permutation test -- Algorithm 1 (exhaustive, pure R)
+#'
+#' Computes the Anderson-Rubin confidence set for the LATE and the randomization
+#' p-value for the null `beta = 0` by scanning every interval of the permutation
+#' grid. This is the reference implementation; `AR_algo2()` returns the same
+#' result faster by jumping between crossings. Internal -- dispatched to by
+#' `run_AR()`, not called directly.
+#'
+#' @param data_table Data frame with columns `Y_observed`, `D_observed`,
+#'   `assignment`, and any (demeaned) covariates.
+#' @param N1,N0 Number of treated and control units.
+#' @param zsim An `N x n_permutations` matrix of permuted assignments.
+#' @param tol Numerical tolerance for comparisons.
+#' @param alpha Confidence level (default `0.95` for a 95% confidence set).
+#' @return A list with `confidence_set` (a list of `[lower, upper]` intervals)
+#'   and `p_value` (the randomization p-value for the null `beta = 0`, i.e.
+#'   LATE = 0, using the finite-sample-valid `(1 + count)/(1 + n)` convention).
+#' @noRd
 AR_algo1 <- function(data_table, N1, N0, zsim, tol=1e-8, alpha=0.95) {
-  # Anderson-Rubin Permutation Test - Algorithm 1 (Pure R Implementation)
-  #
-  # Arguments:
-  #   data_table: data frame with columns 'Y_observed', 'D_observed', 'assignment', and covariates
-  #   N1: number of treated units
-  #   N0: number of control units
-  #   zsim: matrix of permuted assignments (N x n_simulations)
-  #   tol: tolerance for numerical comparisons
-  #   alpha: confidence level (default 0.95 for 95% CI)
-  #
-  # Returns:
-  #   A list with:
-  #     confidence_set: the confidence set as a list of [lower, upper] intervals
-  #     p_value: randomization-based p-value for the null beta = 0 (LATE = 0),
-  #              using the finite-sample-valid (1 + count)/(1 + n) convention
-  
+
   cat("\n========================================\n")
   cat("AR ALGORITHM 1 - CUSTOM IMPLEMENTATION\n")
   cat("========================================\n\n")

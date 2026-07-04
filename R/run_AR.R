@@ -215,18 +215,17 @@ run_AR <- function(data,
     zsim = sapply(seq_len(n_rand), gen_assignment_CR_index, N1 = N1, N0 = N0)
 
     # --- Dispatch -------------------------------------------------------------
-    algo_fun_name = switch(algorithm,
-                           algo1 = "AR_algo1",
-                           algo2 = "AR_algo2")
+    # Dispatch by direct symbol reference so the algorithm function is resolved
+    # in run_AR()'s lexical scope (the package namespace). Do NOT use
+    # match.fun(<string>): it resolves in the CALLER's frame (parent.frame(2)),
+    # where the non-exported AR_algo1/AR_algo2 are invisible, so an external
+    # `library(rilate); run_AR(...)` call would fail with "AR_algo2 not found".
+    algo_fun = switch(algorithm,
+                      algo1 = AR_algo1,
+                      algo2 = AR_algo2)
 
     results = list(without = NULL, with = NULL)
 
-    if (!exists(algo_fun_name, mode = "function")) {
-        stop(algo_fun_name, "() not found. It is part of the rilate ",
-             "package; load the package (or source R/AR_", algorithm,
-             ".R and R/AR_helpers.R) first.")
-    }
-    algo_fun = match.fun(algo_fun_name)
     for (r in runs) {
         dt = if (r == "with") data_with else data_without
         results[[r]] = algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,

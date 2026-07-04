@@ -1,5 +1,5 @@
 ---
-title: "RI for LATE"
+title: "RI for LATE (under construction)"
 output: github_document
 vignette: >
   %\VignetteIndexEntry{Anderson-Rubin Permutation Tests for Noncompliance}
@@ -61,6 +61,16 @@ uarantees are stated in [[2]](https://academic.oup.com/biomet/article/113/2/asag
 ## Demonstration
 
 # Install packages
+
+`rilate` is not yet on CRAN. Install the development version from
+[GitHub](https://github.com/hchang1508/rilate) with:
+
+``` r
+# install.packages("remote")
+remotes::install_github("hchang1508/rilate")
+```
+
+Then load it with `library(rilate)`, as in the example below.
 
 # Synthetic Data Example
 

@@ -23,27 +23,26 @@
 
 
 
-# ==============================================================================
-# Main Function: AR Algorithm 2 (Fast Version)
-# ==============================================================================
-
+#' Anderson-Rubin permutation test -- Algorithm 2 (fast, jumping)
+#'
+#' Computes the same Anderson-Rubin confidence set and randomization p-value as
+#' `AR_algo1()`, but instead of checking every interval it jumps between
+#' crossing points (via `find_crossings_with_all()`), which is substantially
+#' faster. This is the default algorithm. Internal -- dispatched to by
+#' `run_AR()`, not called directly.
+#'
+#' @param data_table Data frame with columns `Y_observed`, `D_observed`,
+#'   `assignment`, and any (demeaned) covariates.
+#' @param N1,N0 Number of treated and control units.
+#' @param zsim An `N x n_permutations` matrix of permuted assignments.
+#' @param tol Numerical tolerance for comparisons.
+#' @param alpha Confidence level (default `0.95` for a 95% confidence set).
+#' @return A list with `confidence_set` (a list of `[lower, upper]` intervals)
+#'   and `p_value` (the randomization p-value for the null `beta = 0`, i.e.
+#'   LATE = 0, using the finite-sample-valid `(1 + count)/(1 + n)` convention).
+#' @noRd
 AR_algo2 <- function(data_table, N1, N0, zsim, tol=1e-8, alpha=0.95) {
-  # Anderson-Rubin Permutation Test - Algorithm 2 (Fast with Jumping)
-  #
-  # Arguments:
-  #   data_table: data frame with columns 'Y_observed', 'D_observed', 'assignment', and covariates
-  #   N1: number of treated units
-  #   N0: number of control units
-  #   zsim: matrix of permuted assignments (N x n_simulations)
-  #   tol: tolerance for numerical comparisons
-  #   alpha: confidence level (default 0.95 for 95% CI)
-  #
-  # Returns:
-  #   A list with:
-  #     confidence_set: the confidence set as a list of [lower, upper] intervals
-  #     p_value: randomization-based p-value for the null beta = 0 (LATE = 0),
-  #              using the finite-sample-valid (1 + count)/(1 + n) convention
-  
+
   cat("\n========================================\n")
   cat("AR ALGORITHM 2 - FAST IMPLEMENTATION\n")
   cat("========================================\n\n")
@@ -269,20 +268,19 @@ AR_algo2 <- function(data_table, N1, N0, zsim, tol=1e-8, alpha=0.95) {
   ))
 }
 
-# ==============================================================================
-# Helper Function: Find crossings of one AR with all others
-# ==============================================================================
-
+#' Find every crossing of one AR function with all the others
+#'
+#' Solves `AR_one(beta) = AR_all[, j](beta)` for each permutation `j` and returns
+#' the sorted vector of all crossing points. `AR_algo2()` calls this once per AR
+#' function to build the lookup table that lets its fast loop jump between
+#' crossings instead of scanning every interval.
+#'
+#' @param AR_one Length-6 coefficient vector for one AR function.
+#' @param AR_all A 6 x n matrix of AR coefficients (one function per column).
+#' @return A sorted numeric vector of all crossing points.
+#' @noRd
 find_crossings_with_all <- function(AR_one, AR_all) {
-  # Find where one specific AR function crosses all other AR functions
-  #
-  # Arguments:
-  #   AR_one: vector of 6 coefficients for one AR function
-  #   AR_all: matrix of 6 coefficients for all AR functions (6 x n)
-  #
-  # Returns:
-  #   Sorted vector of all crossing points
-  
+
   nsim <- ncol(AR_all)
   
   # Find intersections with each AR function
@@ -295,9 +293,3 @@ find_crossings_with_all <- function(AR_one, AR_all) {
 
   return(intersects)
 }
-
-# ------------------------------------------------------------------------------
-# The remaining helpers (find_quantile_index, find_quantile_at_point,
-# select_intervals_for_region, unlist_interval_list, merge_CS_regions) are
-# defined in R/AR_helpers.R and shared with AR_algo1().
-# ------------------------------------------------------------------------------
