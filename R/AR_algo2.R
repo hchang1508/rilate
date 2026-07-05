@@ -83,105 +83,117 @@ AR_algo2 <- function(data_table, N1, N0, zsim, tol=1e-8, alpha=0.95) {
   p_value <- ar_pvalue_at(0, AR_obs_coef, AR_sim_coef)
 
   # ==========================================================================
-  # STEP 3: Calculate ALL intersections (for the grid)
+  # STEP 3+4a: Calculate the intersection grid AND the per-curve crossing
+  # lookup table in a SINGLE pass.
   # ==========================================================================
-  
-  cat("Step 3: Calculating intersections between AR functions...\n")
-  intersections_grid <- calculate_intersections_02(AR_sim_coef)
-  
-  cat("  - Found", length(intersections_grid), "unique intersection points\n\n")
-  
+  # Previously the grid (Step 3) and the per-curve lookup (Step 4a) each did the
+  # pairwise root-finding separately -- the grid over the upper triangle, then a
+  # per-curve loop `find_crossings_with_all()` over the FULL square -- so every
+  # pairwise `polyroot` was computed ~3 times. calculate_intersections_lut()
+  # finds each pair's roots once and distributes them to both owning curves,
+  # producing byte-identical `grid` and `lut` with a third of the work. This is
+  # the dominant cost of AR_algo2 at large n_permutations.
+  cat("Step 3: Calculating intersection grid and lookup table\n")
+  ci <- calculate_intersections_lut(AR_sim_coef)
+  intersections_grid <- ci$grid
+  # Per-curve crossings, stored as GRID INDICES (see calculate_intersections_lut).
+  # Working in index space lets the jump loop below locate each crossing on the
+  # grid in O(1) instead of searching the ~G-element grid every iteration.
+  crossing_idx <- ci$lut_idx
+
+  cat("  - Found", length(intersections_grid), "unique intersection points\n")
+
   # Check if no intersections
   if (length(intersections_grid) == 0) {
     cat("No intersections found - returning full real line\n")
     return(list(c(-Inf, Inf)))
   }
-  
+
   # ==========================================================================
   # STEP 4: THE FAST LOOP - Jump between crossings (OPTIMIZED)
   # ==========================================================================
-  
+
   cat("Step 4: Fast loop - jumping between crossings...\n")
-  
-  # Pre-compute intersection table for fast lookup
-  cat("  Building intersection lookup table...\n")
-  intersections_with_indices <- list()
-  for (i in 1:ncol(AR_sim_coef)) {
-    intersections_with_indices[[i]] <- find_crossings_with_all(AR_sim_coef[, i], AR_sim_coef)
-  }
   cat("  - Lookup table built\n")
   
-  # Initialize
+  # Initialize. The threshold is tracked as a GRID INDEX (v_idx) rather than a
+  # value: a crossing at grid index k has value grid[k], and grid is ascending,
+  # so "value >= grid[v_idx]" is exactly "k >= v_idx". Starting at v_idx = 1
+  # keeps all crossings (matches the old threshold v = intersections_grid[1]).
   s <- find_quantile_index(1, AR_sim_coef, intersections_grid, alpha = 1 - alpha, tol = tol)
   s <- as.integer(s)
-  v <- intersections_grid[1]  # Current threshold
-  ind_int_old <- 0  # Track previous index to prevent going backwards
-  
+  v_idx <- 1L                 # Current threshold, as a grid index
+  ind_int_old <- 0L           # Track previous index to prevent going backwards
+
   MaxIter <- length(intersections_grid)
   iter <- 0
-  
+
   e <- c()        # Endpoints we care about
   indices <- c()  # Quantile indices at each endpoint
-  
+
   # The jumping loop
   while (iter < MaxIter) {
-    
+
     # ========================================================================
     # STEP 4.1: Find where CURRENT quantile crosses ALL other AR functions
     # ========================================================================
-    
-    # Use pre-computed intersections (FAST!)
-    int_current <- intersections_with_indices[[s]]
-    
-    # Only keep intersections to the right of current threshold
-    int_current <- int_current[int_current >= v]
-    
-    if (length(int_current) == 0) {
+
+    # Grid indices where curve s crosses another curve (pre-computed, sorted).
+    idx_current <- crossing_idx[[s]]
+
+    # Only keep crossings to the right of the current threshold. Because grid is
+    # ascending, filtering by grid index (>= v_idx) is equivalent to the old
+    # value filter (crossing value >= grid[v_idx]).
+    idx_current <- idx_current[idx_current >= v_idx]
+
+    if (length(idx_current) == 0) {
       # No more crossings - we're done!
       indices <- c(indices, s)
       break
     }
-    
-    # Find the minimum (next crossing point)
-    e_i <- min(int_current)
-    e <- c(e, e_i)
-    indices <- c(indices, s)
-    
+
     # ========================================================================
     # STEP 4.2: JUMP to the next crossing
     # ========================================================================
-    
-    # Find where this crossing is on the grid
-    ind_int <- min(which(abs(intersections_grid - e_i) <= 2*tol))
-    ind_int <- max(ind_int, ind_int_old)  # Ensure we don't go backwards!
-    
-    # Handle case where no match found (increase tolerance)
-    tol_temp <- tol
-    while (ind_int == Inf) {
-      tol_temp <- tol_temp * 2
-      ind_int <- min(which(abs(intersections_grid - e_i) <= tol_temp))
-      ind_int <- max(ind_int, ind_int_old)
+    # The next crossing is the smallest grid index among the remaining crossings
+    # (smallest index == smallest value, grid being ascending). We already hold
+    # its grid position, so there is NO grid search -- O(1) per iteration, versus
+    # the previous min(which(abs(grid - e_i) <= 2*tol)) full-grid scan.
+    e_idx <- idx_current[1]                       # crossings are sorted -> min
+    e_i   <- intersections_grid[e_idx]            # endpoint value for the CS
+    e <- c(e, e_i)
+    indices <- c(indices, s)
+
+    # Guard Against Floating Point Error: Move ind_int back to include
+    # any grid points that are within tolerance of the current endpoint. This
+    # ensures we don't skip over crossings due to tiny numerical differences.
+    ind_int <- e_idx
+    while (ind_int > 1L &&
+           (e_i - intersections_grid[ind_int - 1L]) <= 2 * tol) {
+      ind_int <- ind_int - 1L
     }
-    
+    ind_int <- max(ind_int, ind_int_old)          # never move backwards
+
     # Check if we reached the end
     if (ind_int == length(intersections_grid)) {
       indices <- c(indices, s)
       break
     }
-    
+
     # Jump to the next interval
-    v <- intersections_grid[ind_int + 1]  # New threshold
+    v_idx <- ind_int + 1L                         # New threshold (grid index)
     s <- find_quantile_index(ind_int + 1, AR_sim_coef, intersections_grid,
                          alpha = 1 - alpha, tol = tol)
     s <- as.integer(s)
-    
-    ind_int_old <- ind_int + 1  # Update: next ind_int must be >= this
-    
+
+    ind_int_old <- ind_int + 1L  # Update: next ind_int must be >= this
+
     # Print progress every 100 iterations (like Haoge)
     if (iter %% 100 == 0) {
-      cat("  Iteration:", iter, "| Threshold:", round(v, 4), "| Quantile index:", s, "\n")
+      cat("  Iteration:", iter, "| Threshold:", round(intersections_grid[v_idx], 4),
+          "| Quantile index:", s, "\n")
     }
-    
+
     iter <- iter + 1
   }
   

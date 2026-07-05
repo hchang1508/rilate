@@ -24,6 +24,74 @@ calculate_intersections_02 <- function(AR_sim_coef) {
   # Return sorted unique intersections
   return(sort(unique(intersects)))
 }
+
+#' Calculate the intersection grid AND per-curve crossing lists in one pass
+#'
+#' `AR_algo2()` needs two things: the sorted grid of all pairwise crossings (as
+#' [calculate_intersections_02()] returns), and, for every AR function, the
+#' sorted list of the points at which it crosses any other function (what
+#' [find_crossings_with_all()] returns per curve). Computing these separately
+#' does the pairwise root-finding twice -- `calculate_intersections_02()` over
+#' the upper triangle, then a per-curve pass over the full square -- so the
+#' `polyroot` work is done ~3x. This routine finds each pair's roots exactly
+#' once (upper triangle) and distributes every root to BOTH of its curves,
+#' yielding identical outputs with one third of the root-finding.
+#'
+#' @param AR_sim_coef Matrix of AR coefficients (6 rows x n_simulations columns).
+#' @return A list with `grid` (sorted unique intersection points, identical to
+#'   `calculate_intersections_02(AR_sim_coef)`) and `lut_idx`, a length-`ncol`
+#'   list whose `i`-th element is the sorted vector of GRID INDICES at which
+#'   curve `i` crosses any other curve. Storing grid indices (rather than the
+#'   crossing values) lets `AR_algo2()`'s jump loop read the next crossing's grid
+#'   position in O(1) -- `grid[lut_idx[[i]]]` recovers the crossing values, which
+#'   equal `sort(find_crossings_with_all(AR_sim_coef[, i], AR_sim_coef))`.
+#' @noRd
+calculate_intersections_lut <- function(AR_sim_coef) {
+  n <- ncol(AR_sim_coef)
+
+  if (n < 2) {
+    return(list(grid = numeric(0),
+                lut_idx = rep(list(integer(0)), max(n, 0))))
+  }
+
+  # One pass over the upper triangle (i < j). For each i, collect the roots of
+  # curve i against every j > i, remembering which j each root came from so we
+  # can attribute it to both curves afterwards. Uses pbapply::pblapply so this
+  # (the dominant cost at large n) reports a progress bar; pblapply preserves
+  # input order, so the concatenation below is deterministic.
+  per_i <- pbapply::pblapply(seq_len(n - 1), function(i) {
+    js  <- (i + 1):n
+    res <- lapply(js, function(j) AR_intersection(AR_sim_coef[, i], AR_sim_coef[, j]))
+    pts <- unlist(res)
+    list(pts = pts,
+         i   = rep.int(i, length(pts)),
+         j   = rep(js, lengths(res)))
+  })
+
+  allpts <- unlist(lapply(per_i, `[[`, "pts"))
+  alli   <- unlist(lapply(per_i, `[[`, "i"))
+  allj   <- unlist(lapply(per_i, `[[`, "j"))
+
+  grid <- sort(unique(allpts))
+
+  # Map every crossing value to its index in `grid`. Each crossing value is, by
+  # construction, exactly one of the grid values (grid = sort(unique(allpts))),
+  # so findInterval() returns its exact position. This is ONE vectorized call
+  # (O(total * log G)), unlike searching the grid per crossing inside the loop.
+  gidx <- findInterval(allpts, grid)
+
+  # Each root belongs to two curves (its i and its j): duplicate the grid
+  # indices, tag each copy with one owning curve, split by curve, and sort.
+  # `factor` with explicit levels 1:n ensures curves with no crossings get
+  # integer(0). Because grid is ascending, a sorted index vector is also sorted
+  # by crossing value -- so the loop's min() picks both correctly at once.
+  curve   <- c(alli, allj)
+  gidx2   <- as.integer(c(gidx, gidx))
+  lut_idx <- lapply(split(gidx2, factor(curve, levels = seq_len(n))), sort.int)
+  names(lut_idx) <- NULL
+
+  list(grid = grid, lut_idx = lut_idx)
+}
 ################################################################################
 ## AR_intersection Function
 ## Extracted from: 2_AR_inversion_algo1.R (lines 249-318)
