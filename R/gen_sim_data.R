@@ -167,18 +167,31 @@ add_effects_to_raw_outcomes=function(outcome_raw,tau_at,tau_nt,tau_c,N_at,N_nt,N
 
     outcome_raw[,2]=outcome_raw[,2] + c(eff_at,eff_nt,eff_c)
     #browser()
-    #calibrate the effects to match exactly 
+    # Stratum row indices via seq_len() so an empty stratum (N==0) yields
+    # integer(0) instead of a downward-counting a:b range (which would run
+    # off the end of the table); calibration is skipped for empty strata.
+    idx_at = seq_len(N_at)
+    idx_nt = N_at + seq_len(N_nt)
+    idx_c  = N_at + N_nt + seq_len(N_c)
+
+    #calibrate the effects to match exactly
     #For always-takers
-    factor_at =  mean(outcome_raw[1:N_at,2]-outcome_raw[1:N_at,3]) -tau_at 
-    outcome_raw[1:N_at,2] = outcome_raw[1:N_at,2] - factor_at 
+    if (N_at > 0){
+        factor_at =  mean(outcome_raw[idx_at,2]-outcome_raw[idx_at,3]) -tau_at
+        outcome_raw[idx_at,2] = outcome_raw[idx_at,2] - factor_at
+    }
 
     #For never-takers
-    factor_nt = mean(outcome_raw[(N_at+1):(N_at+N_nt),2]-outcome_raw[(N_at+1):(N_at+N_nt),3]) -tau_nt 
-    outcome_raw[(N_at+1):(N_at+N_nt),2] = outcome_raw[(N_at+1):(N_at+N_nt),2] -factor_nt 
+    if (N_nt > 0){
+        factor_nt = mean(outcome_raw[idx_nt,2]-outcome_raw[idx_nt,3]) -tau_nt
+        outcome_raw[idx_nt,2] = outcome_raw[idx_nt,2] -factor_nt
+    }
 
     #For compliers
-    factor_c = mean(outcome_raw[(N_at+N_nt+1):(N_at+N_nt+N_c),2]-outcome_raw[(N_at+N_nt+1):(N_at+N_nt+N_c),3]) - tau_c 
-    outcome_raw[(N_at+N_nt+1):(N_at+N_nt+N_c),2] =  outcome_raw[(N_at+N_nt+1):(N_at+N_nt+N_c),2] - factor_c
+    if (N_c > 0){
+        factor_c = mean(outcome_raw[idx_c,2]-outcome_raw[idx_c,3]) - tau_c
+        outcome_raw[idx_c,2] =  outcome_raw[idx_c,2] - factor_c
+    }
     
 
     
