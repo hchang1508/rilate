@@ -242,22 +242,16 @@ run_rilate <- function(data,
         on.exit(pbapply::pboptions(old_pbo), add = TRUE)
     }
 
-    # Per-run wall-clock (elapsed seconds), so callers can separate the cost of
-    # the unadjusted vs covariate-adjusted analysis without re-running either.
-    runtimes = stats::setNames(rep(NA_real_, length(runs)), runs)
     for (r in runs) {
         dt = if (r == "with_covariates") data_with else data_without
-        el = system.time({
-            if (verbose) {
-                results[[r]] = algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
-                                        tol = tol, alpha = alpha)
-            } else {
-                utils::capture.output(
-                    results[[r]] <- algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
-                                             tol = tol, alpha = alpha))
-            }
-        })[["elapsed"]]
-        runtimes[r] = el
+        if (verbose) {
+            results[[r]] = algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
+                                    tol = tol, alpha = alpha)
+        } else {
+            utils::capture.output(
+                results[[r]] <- algo_fun(dt, N1 = N1, N0 = N0, zsim = zsim,
+                                         tol = tol, alpha = alpha))
+        }
         # At large n_rand the algorithm's internal pairwise-intersection grid
         # (O(n_rand^2)) dominates memory. Once algo_fun() returns, that grid is
         # out of scope but not yet reclaimed; force a collection so the next
@@ -278,7 +272,6 @@ run_rilate <- function(data,
         zsim       = zsim,
         inputs     = list(without_covariates = data_without, with_covariates = data_with),
         guard      = guard,
-        runtimes   = runtimes,
         results    = results[runs]
     ))
 }
