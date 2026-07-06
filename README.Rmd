@@ -1,5 +1,5 @@
 ---
-title: "RI for LATE (under construction)"
+title: "RI for LATE "
 output: github_document
 vignette: >
   %\VignetteIndexEntry{Anderson-Rubin Permutation Tests for Noncompliance}
@@ -17,7 +17,16 @@ knitr::opts_chunk$set(
 ```
 
 **Author:** Arya Gadage and Haoge Chang<br/>
+**Version:** `r as.character(utils::packageVersion("rilate"))` 
 **Last updated:** `r format(Sys.Date(), "%B %d, %Y")`
+
+> **Beta software.** The core procedure has been validated against the
+> reference implementation and passes an extensive test suite, including the
+> coverage and power study below. That said, the package is still at an early
+> stage. Please report any issues on
+> [GitHub](https://github.com/hchang1508/rilate/issues).
+
+> **Note.** This package was migrated and improved with the help of Claude.
 
 # Introduction
 
@@ -52,7 +61,7 @@ The package supports covariate adjustment via linear regression, which can impro
 
 The package currently supports completely randomized designs with a binary treatment. The remaining statistical regularity conditions for asymptotic guarantees are stated in [[2]](https://academic.oup.com/biomet/article/113/2/asag010/8487895).
 
-# Note
+## Note
  1. The package includes two algorithms that implement the same inferential procedure but differ in speed. Algorithm 2 is faster and is used by default; Algorithm 1 is retained for comparison and validation.
  2. The authors used Claude to migrate the original code from [[2]](https://academic.oup.com/biomet/article/113/2/asag010/8487895) into this repository and to help design the test cases.
 
@@ -154,8 +163,7 @@ data.frame(
 )
 ```
 
-Adjusting for the two
-prognostic covariates shrinks the confidence set roughly sevenfold (from about
+Adjusting for the two covariates shrinks the confidence set roughly sevenfold (from about
 `[0.16, 2.42]`, width `2.26`, to `[1.06, 1.39]`, width `0.33`) and sharpens the
 p-value from about `0.022` to `0.001`. This is the
 precision gain covariate adjustment buys when the covariates are predictive for
@@ -200,8 +208,85 @@ names.
 | `verbose` | `TRUE` | When `TRUE`, print the setup report and per-step progress to the console; when `FALSE`, run silently. Does not affect the returned value. |
 
 
-# Assess Coverage
-# Compare Two algorithms (time )
+# Assess Coverage and Compare Two Algorithms
+
+We validate the procedure with a Monte Carlo study that (i) checks the
+confidence sets attain their nominal coverage and (ii) compares the two
+algorithms' runtimes. The full driver lives in
+[`sim_slurm/sim_coverage_power/`](sim_slurm/sim_coverage_power/); the table
+below is produced by
+[`aggregated/summary.R`](sim_slurm/sim_coverage_power/aggregated/summary.R).
+
+## Simulation design
+
+Every replication draws a completely randomized experiment from a fixed
+potential-outcome table with **constant** treatment effects
+(`mode = "constant"`), so the finite-sample coverage guarantee applies. The
+design is a $3 \times 3$ grid crossing the **complier rate** with the **true
+LATE**:
+
+- **Complier rate** $f_c \in \lbrace 0,\ 0.5,\ 1 \rbrace$ — the non-complier
+  mass is split evenly between always- and never-takers, giving stratum
+  fractions $(f_a, f_c, f_n) = (0.5, 0, 0.5)$, $(0.25, 0.5, 0.25)$, and
+  $(0, 1, 0)$. Lower $f_c$ is a weaker instrument.
+- **True LATE** $\tau \in \lbrace 0,\ 0.5,\ 1 \rbrace$ — the constant complier
+  effect. $\tau = 0$ probes the test's size; $\tau > 0$ probes its power.
+
+Fixed constants: sample size **$N = 100$** with **$N_1 = 50$** units assigned to
+treatment, a 95% confidence level, `n_rand = 1000` randomization draws, and 2
+pure-noise covariates for the adjusted analysis. Each of the 9 cells is run for
+**10,000 simulations**, and every simulation is analyzed by both Algorithm 2
+(the default) and Algorithm 1 on the *same* data with the *same* permutation
+draws.
+
+## Results
+
+```{r coverage-power-table, echo=FALSE}
+# Summary produced by sim_slurm/sim_coverage_power/aggregated/summary.R
+# (10,000 simulations per cell). Coverage / power are reported for the
+# unadjusted and covariate-adjusted analyses; runtimes are per-simulation
+# seconds for Algorithm 2 (default) and Algorithm 1.
+results <- data.frame(
+  gamma          = c(0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0),
+  tau            = c(0.0, 0.5, 1.0, 0.0, 0.5, 1.0, 0.0, 0.5, 1.0),
+  cov_unadj      = c(0.951, 0.948, 0.953, 0.948, 0.947, 0.949, 0.952, 0.949, 0.947),
+  pow_unadj      = c(0.049, 0.051, 0.048, 0.052, 0.196, 0.639, 0.048, 0.687, 0.999),
+  cov_adj        = c(0.950, 0.949, 0.950, 0.948, 0.947, 0.947, 0.951, 0.950, 0.947),
+  pow_adj        = c(0.050, 0.052, 0.048, 0.052, 0.193, 0.627, 0.049, 0.676, 0.999),
+  algo2_median_s = c(19.94, 19.90, 19.95, 19.81, 19.88, 19.88, 19.73, 19.79, 19.83),
+  algo2_max_s    = c(26.44, 26.27, 26.08, 25.04, 25.19, 24.64, 24.96, 25.47, 25.33),
+  algo1_median_s = c(772.3, 768.4, 769.0, 775.4, 776.1, 777.1, 776.7, 776.9, 777.4),
+  algo1_max_s    = c(1241.8, 1241.8, 1266.9, 1253.8, 1246.5, 1248.9, 1275.7, 1253.6, 1263.0)
+)
+
+knitr::kable(
+  results,
+  col.names = c("Complier rate $f_c$", "True LATE $\\tau$",
+                "Coverage (unadj.)", "Power (unadj.)",
+                "Coverage (adj.)", "Power (adj.)",
+                "Algo 2 median (s)", "Algo 2 max (s)",
+                "Algo 1 median (s)", "Algo 1 max (s)"),
+  align = "c",
+  caption = "Coverage, power, and per-simulation runtime (seconds) across the 3x3 design (10,000 sims per cell). Runtimes are for Algorithm 2 (default) and Algorithm 1."
+)
+```
+
+To summarize the results:
+
+- **Coverage** stays at the nominal 0.95 in every cell, up to Monte Carlo errors — for both the unadjusted
+  and covariate-adjusted analyses, and even when the instrument is weak
+  ($f_c = 0$).
+- **Power** behaves as expected: under the null ($\tau = 0$) the rejection rate
+  sits at the nominal 5% level, and it rises with both the effect size and the
+  complier rate (up to 0.999 for a strong instrument with $\tau = 1$).
+- **Algorithm 2 is the same procedure, far faster.** It matches Algorithm 1's
+  coverage and power while running roughly **40x faster** — a median of about 20
+  seconds per simulation versus about 13 minutes for Algorithm 1.
+
+  These timings were measured on older cluster nodes and will typically be
+  faster on a modern PC. For reference, on the authors' PC Algorithm 2 with
+  10,000 draws runs in about 15–20 minutes, while Algorithm 1 with 1,000 draws
+  runs in about 3–5 minutes.
 
 # Miscellaneous
 ## gen_sim_data() references
