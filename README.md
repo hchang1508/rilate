@@ -145,7 +145,11 @@ res_nocov$results$without_covariates$p_value          # randomization p-value (H
 `zsim`, `inputs`, `guard`) plus `results`. Each element of `results`
 (`without_covariates` and, when applicable, `with_covariates`) holds a
 `confidence_set` (a list of `[lower, upper]` intervals) and a `p_value`
-(the randomization p-value for the null $\tau_{\text{LATE}} = 0$).
+(the randomization p-value for the null $\tau_{\text{LATE}} = 0$). We
+recommend setting verbose = TRUE to see the setup report and per-step
+progress trace in the console, but it does not affect the returned
+value. In the examples we set `verbose = FALSE` to suppress this console
+output and keep the rendered document clean.
 
 ## run_rilate() with covariates
 

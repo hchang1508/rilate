@@ -769,7 +769,11 @@ metadata (<code>algorithm</code>, <code>alpha</code>, <code>tol</code>,
 applicable, <code>with_covariates</code>) holds a
 <code>confidence_set</code> (a list of <code>[lower, upper]</code>
 intervals) and a <code>p_value</code> (the randomization p-value for the
-null <span class="math inline">\(\tau_{\text{LATE}} = 0\)</span>).</p>
+null <span class="math inline">\(\tau_{\text{LATE}} = 0\)</span>). We
+recommend setting verbose = TRUE to see the setup report and per-step
+progress trace in the console, but it does not affect the returned
+value. In the examples we set <code>verbose = FALSE</code> to suppress
+this console output and keep the rendered document clean.</p>
 <h2 id="run_rilate-with-covariates">run_rilate() with covariates</h2>
 <p>We can use pretreatment covariates to improve the precision of our
 analysis.</p>
