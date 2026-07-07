@@ -843,13 +843,11 @@ have sensible defaults.</p>
 </tr>
 </tbody>
 </table>
-<p>The <code>y</code>, <code>d</code>, and <code>z</code> arguments
-below name columns of <code>data</code>. They are technically optional
-because they default to <code>&quot;Y_observed&quot;</code>,
-<code>&quot;D_observed&quot;</code>, and <code>&quot;assignment&quot;</code>, but the
-analysis is undefined without valid outcome, treatment, and assignment
-columns — so treat them as required unless your columns already use
-those default names.</p>
+<p>The <code>y</code>, <code>d</code>, and <code>z</code> arguments name
+the outcome, treatment-received, and assignment columns of
+<code>data</code>. They default to <code>&quot;Y_observed&quot;</code>,
+<code>&quot;D_observed&quot;</code>, and <code>&quot;assignment&quot;</code>. You need to
+set them if your columns use different names.</p>
 <table>
 <thead>
 <tr class="header">

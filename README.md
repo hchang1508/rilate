@@ -216,11 +216,10 @@ have sensible defaults.
 |----|----|----|
 | `data` | data frame | Contains the outcome, treatment-received, assignment, and (optionally) covariate columns. |
 
-The `y`, `d`, and `z` arguments below name columns of `data`. They are
-technically optional because they default to `"Y_observed"`,
-`"D_observed"`, and `"assignment"`, but the analysis is undefined
-without valid outcome, treatment, and assignment columns — so treat them
-as required unless your columns already use those default names.
+The `y`, `d`, and `z` arguments name the outcome, treatment-received,
+and assignment columns of `data`. They default to `"Y_observed"`,
+`"D_observed"`, and `"assignment"`. You need to set them if your columns
+use different names.
 
 | Argument | Default | Description |
 |----|----|----|
