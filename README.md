@@ -400,9 +400,9 @@ left untouched:
   $Y_i(1) = Y_i(0) + \tau_{s(i)}
   \cdot \varepsilon_i$ with $\varepsilon_i \sim \mathcal{N}(1, 0.1^2)$
   (mean 1, standard deviation 0.1), and the stratum is then re-centered
-  so that $\operatorname{mean}(y1 - y0) = \tau_{s(i)}$ holds exactly
-  within the stratum. (Edge case: a complier stratum with $\tau_c = 0$
-  instead receives small mean-zero noise $\mathcal{N}(0, 0.1^2)$, again
+  so that $\mathrm{mean}(y_1 - y_0) = \tau_{s(i)}$ holds exactly within
+  the stratum. (Edge case: a complier stratum with $\tau_c = 0$ instead
+  receives small mean-zero noise $\mathcal{N}(0, 0.1^2)$, again
   re-centered to mean zero.)
 
 # References
