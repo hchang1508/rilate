@@ -1,4 +1,4 @@
-RI for LATE
+Randomization Inference for LATE
 ================
 
 **Author:** Arya Gadage and Haoge Chang<br/> **Version:** 0.0.0.9000
