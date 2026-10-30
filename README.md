@@ -305,7 +305,7 @@ To summarize the results:
   the effect size and the complier rate (up to 0.999 for a strong
   instrument with $\tau = 1$).
 
-- **Algorithm 2 is the same procedure, far faster.** It matches
+- **Algorithm 2 is the same procedure and faster.** It matches
   Algorithm 1’s coverage and power while running roughly **40x faster**
   — a median of about 20 seconds per simulation versus about 13 minutes
   for Algorithm 1.
