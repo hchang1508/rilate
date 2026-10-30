@@ -8,10 +8,12 @@ RI for LATE
 > reference implementation and passes an extensive test suite, including
 > the coverage and power study below. That said, the package is still at
 > an early stage. Please report any issues on
-> [GitHub](https://github.com/hchang1508/rilate/issues).
+> [GitHub](https://github.com/hchang1508/rilate/issues). If you are using it in your research, please let me know and I will greatly appreciate your feedback.
 
 > **Note.** This package was migrated and improved with the help of
 > Claude.
+>
+> 
 
 # Introduction
 
